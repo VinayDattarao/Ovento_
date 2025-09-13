@@ -12,9 +12,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Bell, MessageSquare, Menu, X } from "lucide-react";
 import { NotificationsDropdown } from "./NotificationsDropdown";
+import AuthStatus from "./AuthStatus";
 
 export default function Header() {
-  const { user, isAuthenticated, signInWithGoogle, signOut, isFirebaseEnabled } = useAuth();
+  const { user, isAuthenticated, signInWithGoogle, signOut, isFirebaseEnabled, authMethod } = useAuth();
   const [location] = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -58,6 +59,7 @@ export default function Header() {
           )}
 
           <div className="flex items-center space-x-4">
+            <AuthStatus />
             {!isAuthenticated ? (
               <div className="flex items-center space-x-3">
                 <Button
@@ -65,7 +67,9 @@ export default function Header() {
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                   data-testid="login-button"
                 >
-                  {isFirebaseEnabled ? "Sign in with Google" : "Demo Sign In"}
+                  {authMethod === 'firebase' ? "Sign in with Google" : 
+                   authMethod === 'mock' ? "Demo Sign In" :
+                   isFirebaseEnabled ? "Sign in with Google" : "Demo Sign In"}
                 </Button>
               </div>
             ) : (

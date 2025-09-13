@@ -18,9 +18,13 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
+  const [authMethod, setAuthMethod] = useState<'firebase' | 'mock' | 'detecting'>('detecting');
 
   useEffect(() => {
     const unsubscribe = authService.onAuthStateChanged((firebaseUser) => {
+      // Update auth method
+      setAuthMethod(authService.getAuthMethod());
+      
       if (firebaseUser) {
         // Transform Firebase user to our User interface
         const transformedUser: User = {
@@ -50,6 +54,7 @@ export function useAuth() {
       setIsLoading(true);
       setError(null);
       await authService.signInWithGoogle();
+      setAuthMethod(authService.getAuthMethod());
     } catch (err) {
       setError(err as Error);
       setIsLoading(false);
@@ -75,5 +80,7 @@ export function useAuth() {
     signInWithGoogle,
     signOut,
     isFirebaseEnabled: authService.isFirebaseEnabled,
+    authMethod,
+    isFirebaseConfigured: authService.isFirebaseConfigured(),
   };
 }

@@ -47,39 +47,17 @@ export default function EventsPage() {
   // Fetch ALL events - this is now a marketplace view
   const { data: allEvents = [], isLoading, error } = useQuery<Event[]>({
     queryKey: ['/api/events', selectedType, selectedStatus, selectedDifficulty, selectedLocation, sortBy],
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (selectedType !== 'all') params.append('type', selectedType);
-      if (selectedStatus !== 'all') params.append('status', selectedStatus);
-      if (selectedDifficulty !== 'all') params.append('difficulty', selectedDifficulty);
-      if (selectedLocation !== 'all') params.append('location', selectedLocation);
-      if (sortBy) params.append('sort', sortBy);
-      
-      const response = await fetch(`/api/events?${params.toString()}`);
-      if (!response.ok) throw new Error('Failed to fetch events');
-      return response.json();
-    },
   });
 
   // Get recommended events for authenticated users
   const { data: recommendedEvents = [] } = useQuery<Event[]>({
     queryKey: ['/api/events/recommended'],
-    queryFn: async () => {
-      const response = await fetch('/api/events/recommended');
-      if (!response.ok) return [];
-      return response.json();
-    },
     enabled: !!user,
   });
 
   // Get popular/trending events
   const { data: trendingEvents = [] } = useQuery<Event[]>({
     queryKey: ['/api/events/trending'],
-    queryFn: async () => {
-      const response = await fetch('/api/events/trending');
-      if (!response.ok) return [];
-      return response.json();
-    },
   });
 
   const registerMutation = useMutation({

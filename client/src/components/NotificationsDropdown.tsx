@@ -2,22 +2,27 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Bell } from "lucide-react";
+
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  type?: string;
+  userId?: string;
+}
 interface NotificationsDropdownProps {
   user: any | null;
 }
 
 export function NotificationsDropdown({ user }: NotificationsDropdownProps) {
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: notifications = [], isLoading } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
-    queryFn: async () => {
-      const response = await fetch('/api/notifications');
-      if (!response.ok) throw new Error('Failed to fetch notifications');
-      return response.json();
-    },
     enabled: !!user,
   });
 
-  const unreadCount = notifications.filter((n: any) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <DropdownMenu>
@@ -44,7 +49,7 @@ export function NotificationsDropdown({ user }: NotificationsDropdownProps) {
           ) : notifications.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">No notifications</div>
           ) : (
-            notifications.slice(0, 10).map((notification: any) => (
+            notifications.slice(0, 10).map((notification) => (
               <DropdownMenuItem key={notification.id} className="p-3">
                 <div className="flex items-start space-x-3">
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center ${

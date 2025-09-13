@@ -159,41 +159,120 @@ export const mockAuth = {
   getCurrentUser: () => mockAuth.currentUser
 };
 
-// Unified auth interface that uses Firebase when available, falls back to mock
+// Enhanced unified auth interface with robust Firebase fallback
 export const authService = {
   isFirebaseEnabled: isFirebaseConfigured && firebaseAuth.isAvailable(),
+  currentAuthMethod: 'detecting' as 'firebase' | 'mock' | 'detecting',
 
+  // Robust sign-in that tries Firebase first, falls back to mock if Firebase fails
   signInWithGoogle: async () => {
-    if (authService.isFirebaseEnabled) {
-      return await firebaseAuth.signInWithGoogle();
+    // Try Firebase first if configured
+    if (isFirebaseConfigured && firebaseAuth.isAvailable()) {
+      try {
+        console.log("🔥 Attempting Firebase Google sign-in...");
+        const result = await firebaseAuth.signInWithGoogle();
+        authService.currentAuthMethod = 'firebase';
+        console.log("✅ Firebase authentication successful");
+        return result;
+      } catch (error) {
+        console.warn("⚠️ Firebase sign-in failed, falling back to mock authentication:", error);
+        authService.currentAuthMethod = 'mock';
+        return await mockAuth.signInWithGoogle();
+      }
     } else {
+      // Use mock authentication
+      console.log("🟡 Using mock authentication (Firebase not configured or available)");
+      authService.currentAuthMethod = 'mock';
       return await mockAuth.signInWithGoogle();
     }
   },
 
+  // Robust sign-out that tries both methods if needed
   signOut: async () => {
-    if (authService.isFirebaseEnabled) {
-      await firebaseAuth.signOut();
-    } else {
-      await mockAuth.signOut();
+    try {
+      // Try Firebase first if we're using it
+      if (authService.currentAuthMethod === 'firebase' && firebaseAuth.isAvailable()) {
+        console.log("🔥 Signing out from Firebase...");
+        await firebaseAuth.signOut();
+      }
+    } catch (error) {
+      console.warn("⚠️ Firebase sign-out failed:", error);
     }
+    
+    // Always try mock sign-out as well (to clear localStorage)
+    try {
+      await mockAuth.signOut();
+      console.log("✅ Sign-out successful");
+    } catch (error) {
+      console.warn("⚠️ Mock sign-out failed:", error);
+    }
+    
+    authService.currentAuthMethod = 'detecting';
   },
 
+  // Enhanced auth state listener that tries Firebase first, falls back to mock
   onAuthStateChanged: (callback: (user: any) => void) => {
-    if (authService.isFirebaseEnabled) {
-      return firebaseAuth.onAuthStateChanged(callback);
+    if (isFirebaseConfigured && firebaseAuth.isAvailable()) {
+      // Try Firebase first
+      try {
+        console.log("🔥 Setting up Firebase auth state listener...");
+        
+        // Set up both listeners at registration time
+        const firebaseUnsubscribe = firebaseAuth.onAuthStateChanged((user) => {
+          if (user) {
+            authService.currentAuthMethod = 'firebase';
+            console.log("✅ Firebase user authenticated:", user.email);
+            callback(user);
+          } else {
+            // If no Firebase user, check mock auth state
+            authService.currentAuthMethod = 'mock';
+            const mockUser = mockAuth.getCurrentUser();
+            callback(mockUser);
+          }
+        });
+        
+        const mockUnsubscribe = mockAuth.onAuthStateChanged((mockUser) => {
+          // Only use mock user if Firebase isn't providing a user
+          if (authService.currentAuthMethod === 'mock') {
+            if (mockUser) {
+              console.log("🟡 Using mock user:", mockUser.email);
+            }
+            callback(mockUser);
+          }
+        });
+        
+        // Return combined unsubscribe function
+        return () => {
+          firebaseUnsubscribe();
+          mockUnsubscribe();
+        };
+      } catch (error) {
+        console.warn("⚠️ Firebase auth state listener failed, using mock:", error);
+        authService.currentAuthMethod = 'mock';
+        return mockAuth.onAuthStateChanged(callback);
+      }
     } else {
+      // Use mock authentication
+      console.log("🟡 Setting up mock auth state listener...");
+      authService.currentAuthMethod = 'mock';
       return mockAuth.onAuthStateChanged(callback);
     }
   },
 
+  // Get current user from active auth method
   getCurrentUser: () => {
-    if (authService.isFirebaseEnabled) {
+    if (authService.currentAuthMethod === 'firebase' && firebaseAuth.isAvailable()) {
       return firebaseAuth.getCurrentUser();
     } else {
       return mockAuth.getCurrentUser();
     }
-  }
+  },
+
+  // Get current authentication method
+  getAuthMethod: () => authService.currentAuthMethod,
+
+  // Check if Firebase is configured (for UI display)
+  isFirebaseConfigured: () => isFirebaseConfigured
 };
 
 export default authService;

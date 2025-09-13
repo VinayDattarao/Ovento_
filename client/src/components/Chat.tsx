@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { isStaticMode, mockApiHandlers } from "@/lib/mockData";
 import { 
   Send, 
   Paperclip, 
@@ -49,7 +50,7 @@ export default function Chat({ roomId, eventId, teamId }: ChatProps) {
   const [message, setMessage] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearch, setShowSearch] = useState(false);
-  const [websocket, setWebsocket] = useState<WebSocket | null>(null);
+  const [websocket, setWebsocket] = useState<WebSocket | any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
@@ -120,7 +121,10 @@ export default function Chat({ roomId, eventId, teamId }: ChatProps) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const wsUrl = `${protocol}//${window.location.host}/ws`;
     
-    const ws = new WebSocket(wsUrl);
+    // Use mock WebSocket in static mode
+    const ws = isStaticMode 
+      ? mockApiHandlers.createMockWebSocket(wsUrl)
+      : new WebSocket(wsUrl);
     
     ws.onopen = () => {
       console.log('WebSocket connected');
@@ -133,7 +137,7 @@ export default function Chat({ roomId, eventId, teamId }: ChatProps) {
       }));
     };
 
-    ws.onmessage = (event) => {
+    ws.onmessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
         if (data.type === 'chat_message') {
@@ -154,7 +158,7 @@ export default function Chat({ roomId, eventId, teamId }: ChatProps) {
       setWebsocket(null);
     };
 
-    ws.onerror = (error) => {
+    ws.onerror = (error: Event) => {
       console.error('WebSocket error:', error);
     };
 

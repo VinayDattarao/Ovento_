@@ -11,9 +11,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrencyINR } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
 import { RegistrationWizard } from '@/components/RegistrationWizard';
 import { TeamFormation } from '@/components/TeamFormation';
-import { Event } from '@/types';
+import { Event, EventRegistration, Team } from '@/types';
+
+interface UserRegistrationStatus {
+  isRegistered: boolean;
+  registration?: EventRegistration;
+}
 import { 
   Calendar, MapPin, Users, Trophy, Clock, Globe, ArrowLeft, 
   Share2, Bookmark, Heart, MessageSquare, UserPlus, Download, 
@@ -31,54 +37,28 @@ export default function EventDetail() {
 
   const { data: event, isLoading } = useQuery<Event>({
     queryKey: ['/api/events', eventId],
-    queryFn: async () => {
-      const response = await fetch(`/api/events/${eventId}`);
-      if (!response.ok) throw new Error('Event not found');
-      return response.json();
-    },
     enabled: !!eventId,
   });
 
-  const { data: registrations = [] } = useQuery({
+  const { data: registrations = [] } = useQuery<EventRegistration[]>({
     queryKey: ['/api/events', eventId, 'registrations'],
-    queryFn: async () => {
-      const response = await fetch(`/api/events/${eventId}/registrations`);
-      if (!response.ok) return [];
-      return response.json();
-    },
     enabled: !!eventId && event?.organizerId === user?.id,
   });
 
   // Separate query to check if current user is registered (works for all users)
-  const { data: userRegistration } = useQuery({
+  const { data: userRegistration } = useQuery<UserRegistrationStatus>({
     queryKey: ['/api/events', eventId, 'user-registration'],
-    queryFn: async () => {
-      const response = await fetch(`/api/events/${eventId}/registration-status`);
-      if (!response.ok) return null;
-      return response.json();
-    },
     enabled: !!eventId && !!user,
   });
 
-  const { data: teams = [] } = useQuery({
+  const { data: teams = [] } = useQuery<Team[]>({
     queryKey: ['/api/events', eventId, 'teams'],
-    queryFn: async () => {
-      const response = await fetch(`/api/events/${eventId}/teams`);
-      if (!response.ok) return [];
-      return response.json();
-    },
     enabled: !!eventId,
   });
 
   const registerMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/events/${eventId}/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (!response.ok) throw new Error('Registration failed');
-      return response.json();
+      return apiRequest('POST', `/api/events/${eventId}/register`, {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/events'] });
@@ -128,7 +108,7 @@ export default function EventDetail() {
 
   const isOrganizer = event.organizerId === user?.id;
   // Fix registration state logic - use userRegistration for all users, fallback to registrations for organizers
-  const isRegistered = userRegistration?.isRegistered || (isOrganizer && registrations.some((reg: any) => reg.userId === user?.id));
+  const isRegistered = userRegistration?.isRegistered || (isOrganizer && registrations.some((reg) => reg.userId === user?.id));
   const registrationCount = registrations.length;
   const spotsRemaining = event.maxParticipants ? event.maxParticipants - registrationCount : null;
 
