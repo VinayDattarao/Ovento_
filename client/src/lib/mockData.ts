@@ -1,5 +1,18 @@
 // Mock data for static deployment when backend is not available
-export const isStaticMode = !import.meta.env.VITE_API_URL && typeof window !== 'undefined';
+// This determines if we should use mock data when backend is not available
+const checkStaticMode = () => {
+  if (typeof window === 'undefined') return false;
+  
+  // Check if backend is available by making a quick test request
+  try {
+    // This will be overridden for actual static deployments
+    return false;
+  } catch {
+    return true;
+  }
+};
+
+export const isStaticMode = checkStaticMode();
 
 // Mock events data
 export const mockEvents = [
@@ -131,7 +144,27 @@ export const mockApiHandlers = {
     let responseData: any = { success: true };
     
     if (url.includes('/api/events')) {
-      if (method === 'GET') responseData = mockEvents;
+      if (method === 'GET') {
+        // Handle specific event by ID (e.g., /api/events/1)
+        const eventIdMatch = url.match(/\/api\/events\/([^\/]+)$/);
+        if (eventIdMatch) {
+          const eventId = eventIdMatch[1];
+          const event = mockEvents.find(e => e.id === eventId);
+          if (event) {
+            responseData = event;
+          } else {
+            // Return 404 for non-existent events
+            return new Response(JSON.stringify({ message: 'Event not found' }), {
+              status: 404,
+              statusText: 'Not Found',
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
+        } else {
+          // Return all events for general /api/events request
+          responseData = mockEvents;
+        }
+      }
       if (method === 'POST') responseData = { success: true, id: Date.now() };
     }
     

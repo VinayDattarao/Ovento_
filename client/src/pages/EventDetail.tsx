@@ -35,9 +35,11 @@ export default function EventDetail() {
   const eventId = params?.id;
   const [showRegistrationWizard, setShowRegistrationWizard] = useState(false);
 
-  const { data: event, isLoading } = useQuery<Event>({
+  const { data: event, isLoading, error } = useQuery<Event>({
     queryKey: ['/api/events', eventId],
     enabled: !!eventId,
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const { data: registrations = [] } = useQuery<EventRegistration[]>({
@@ -83,13 +85,40 @@ export default function EventDetail() {
       <div className="min-h-screen bg-background">
         <Navigation />
         <div className="pt-24 flex items-center justify-center">
-          <div className="spinner"></div>
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading event details...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    console.error("Event loading error:", error);
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="pt-24 pb-12">
+          <div className="container mx-auto px-6 text-center">
+            <h1 className="text-2xl font-bold mb-4 text-red-500">Error Loading Event</h1>
+            <p className="text-muted-foreground mb-6">
+              Failed to load event details: {error instanceof Error ? error.message : 'Unknown error'}
+            </p>
+            <div className="space-x-4">
+              <Button onClick={() => window.location.reload()}>Try Again</Button>
+              <Link href="/events">
+                <Button variant="outline">Browse Events</Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   if (!event) {
+    console.log("Event data is null or undefined for eventId:", eventId);
     return (
       <div className="min-h-screen bg-background">
         <Navigation />

@@ -1,11 +1,11 @@
-// Firebase integration with fallback to mock authentication
+// Firebase authentication integration - Firebase required for sign-in
 // Based on Firebase integration blueprint for Ovento platform
 
 import { initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, signInWithPopup, signOut, onAuthStateChanged, GoogleAuthProvider, type Auth, type User } from "firebase/auth";
 
 // Firebase configuration from environment variables
-const firebaseConfig = {
+let firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
@@ -15,7 +15,7 @@ const firebaseConfig = {
 };
 
 // Check if Firebase environment variables are available
-const isFirebaseConfigured = !!(
+let isFirebaseConfigured = !!(
   import.meta.env.VITE_FIREBASE_API_KEY &&
   import.meta.env.VITE_FIREBASE_AUTH_DOMAIN &&
   import.meta.env.VITE_FIREBASE_PROJECT_ID &&
@@ -24,24 +24,57 @@ const isFirebaseConfigured = !!(
   import.meta.env.VITE_FIREBASE_APP_ID
 );
 
+// Function to try loading Firebase config from server
+async function loadFirebaseConfigFromServer() {
+  try {
+    const response = await fetch('/api/config/firebase');
+    if (response.ok) {
+      const serverConfig = await response.json();
+      if (serverConfig.apiKey) {
+        firebaseConfig = serverConfig;
+        isFirebaseConfigured = true;
+        console.log("🔥 Using Firebase config from server");
+        return true;
+      }
+    }
+  } catch (error) {
+    console.log("⚠️ Could not fetch Firebase config from server:", error);
+  }
+  return false;
+}
+
 let app: FirebaseApp | null = null;
 let firebaseAuthInstance: Auth | null = null;
 let googleProvider: GoogleAuthProvider | null = null;
 
-// Initialize Firebase only if configuration is available
-if (isFirebaseConfigured) {
-  try {
-    app = initializeApp(firebaseConfig);
-    firebaseAuthInstance = getAuth(app);
-    googleProvider = new GoogleAuthProvider();
-    console.log("🔥 Firebase initialized successfully");
-  } catch (error) {
-    console.warn("🔥 Firebase initialization failed:", error);
-    console.log("🟡 Falling back to mock authentication");
+// Initialize Firebase with server config fallback
+async function initializeFirebase() {
+  // If not configured with VITE variables, try loading from server
+  if (!isFirebaseConfigured) {
+    await loadFirebaseConfigFromServer();
   }
-} else {
-  console.log("🟡 Firebase not configured - using mock authentication");
+
+  // Initialize Firebase if configuration is available
+  if (isFirebaseConfigured) {
+    try {
+      app = initializeApp(firebaseConfig);
+      firebaseAuthInstance = getAuth(app);
+      googleProvider = new GoogleAuthProvider();
+      console.log("🔥 Firebase initialized successfully");
+      return true;
+    } catch (error) {
+      console.error("🔥 Firebase initialization failed:", error);
+      throw new Error("Firebase initialization failed. Please check your Firebase configuration.");
+    }
+  } else {
+    console.error("🔥 Firebase not configured - authentication unavailable");
+    throw new Error("Firebase not configured. Please set Firebase environment variables.");
+  }
+  return false;
 }
+
+// Initialize Firebase (will be called when needed)
+let firebaseInitPromise: Promise<boolean> | null = null;
 
 // Firebase authentication functions
 export const firebaseAuth = {
@@ -89,190 +122,145 @@ export const firebaseAuth = {
   }
 };
 
-// Mock authentication for fallback
-const mockUser = {
-  uid: "mock-user-1",
-  email: "demo@example.com",
-  displayName: "Demo User",
-  photoURL: null,
-  emailVerified: true,
+// Firebase authentication service - no mock authentication
+export const firebaseAuthService = {
+  // Check if Firebase is properly initialized and ready
+  isReady: () => isFirebaseConfigured && firebaseAuthInstance && googleProvider,
+  
+  // Get current Firebase auth instance
+  getAuth: () => firebaseAuthInstance,
+  
+  // Check if user is currently signed in
+  isSignedIn: () => firebaseAuthInstance?.currentUser !== null,
+  
+  // Get current user
+  getCurrentUser: () => firebaseAuthService.isReady() ? firebaseAuthInstance!.currentUser : null,
 };
 
-// Store authentication listeners for mock auth
-const mockAuthListeners = new Set<(user: any) => void>();
-
-// Mock authentication functions
-export const mockAuth = {
-  currentUser: null as any,
+// Firebase-only authentication service - requires Firebase configuration
+export const authService = {
+  isFirebaseEnabled: false,
   
-  // Notify all listeners of auth state change
-  notifyListeners: (user: any) => {
-    mockAuthListeners.forEach(callback => {
-      try {
-        callback(user);
-      } catch (error) {
-        console.error('Error in mock auth listener:', error);
-      }
-    });
+  // Initialize Firebase - required for authentication
+  async ensureFirebaseInitialized() {
+    if (!firebaseInitPromise) {
+      firebaseInitPromise = initializeFirebase();
+    }
+    await firebaseInitPromise;
+    this.isFirebaseEnabled = isFirebaseConfigured && firebaseAuth.isAvailable();
+    
+    if (!this.isFirebaseEnabled) {
+      throw new Error("Firebase authentication is required but not configured properly");
+    }
   },
-  
+
+  // Firebase Google sign-in - only method available
   signInWithGoogle: async () => {
-    mockAuth.currentUser = mockUser;
-    // Store in localStorage for persistence
-    localStorage.setItem('mockUser', JSON.stringify(mockUser));
+    await authService.ensureFirebaseInitialized();
     
-    // Notify all listeners immediately
-    mockAuth.notifyListeners(mockUser);
-    
-    return mockUser;
-  },
-
-  signOut: async () => {
-    mockAuth.currentUser = null;
-    localStorage.removeItem('mockUser');
-    
-    // Notify all listeners immediately
-    mockAuth.notifyListeners(null);
-  },
-
-  onAuthStateChanged: (callback: (user: any) => void) => {
-    // Add listener to the set
-    mockAuthListeners.add(callback);
-    
-    // Check for stored user on initialization and call callback immediately
-    const storedUser = localStorage.getItem('mockUser');
-    if (storedUser) {
-      mockAuth.currentUser = JSON.parse(storedUser);
-      // Use setTimeout to ensure callback is called asynchronously
-      setTimeout(() => callback(mockAuth.currentUser), 0);
-    } else {
-      // Use setTimeout to ensure callback is called asynchronously
-      setTimeout(() => callback(null), 0);
+    if (!isFirebaseConfigured || !firebaseAuth.isAvailable()) {
+      throw new Error("Firebase authentication is not available. Please configure Firebase to sign in.");
     }
     
-    // Return unsubscribe function that removes the listener
+    try {
+      console.log("🔥 Attempting Firebase Google sign-in...");
+      const result = await firebaseAuth.signInWithGoogle();
+      console.log("✅ Firebase authentication successful");
+      return result;
+    } catch (error) {
+      console.error("🔥 Firebase sign-in failed:", error);
+      throw error;
+    }
+  },
+
+  // Firebase sign-out
+  signOut: async () => {
+    if (!firebaseAuth.isAvailable()) {
+      console.warn("⚠️ Cannot sign out - Firebase not available");
+      return;
+    }
+    
+    try {
+      console.log("🔥 Signing out from Firebase...");
+      await firebaseAuth.signOut();
+      console.log("✅ Sign-out successful");
+    } catch (error) {
+      console.error("⚠️ Firebase sign-out failed:", error);
+      throw error;
+    }
+  },
+
+  // Firebase auth state listener with server sync
+  onAuthStateChanged: (callback: (user: any) => void) => {
+    let unsubscribeRef: (() => void) | null = null;
+    
+    // Initialize Firebase asynchronously
+    authService.ensureFirebaseInitialized().then(() => {
+      if (isFirebaseConfigured && firebaseAuth.isAvailable()) {
+        console.log("🔥 Setting up Firebase auth state listener...");
+        
+        unsubscribeRef = firebaseAuth.onAuthStateChanged(async (user) => {
+          if (user) {
+            // Sync user with server using secure ID token
+            try {
+              const idToken = await user.getIdToken();
+              const response = await fetch('/api/auth/firebase-user', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${idToken}`,
+                  'Content-Type': 'application/json',
+                },
+              });
+              
+              if (response.ok) {
+                console.log("✅ User authenticated and synced with server");
+              } else {
+                const error = await response.text();
+                console.error("⚠️ Failed to authenticate with server:", error);
+              }
+            } catch (error) {
+              console.error("⚠️ Failed to get ID token or sync with server:", error);
+            }
+          }
+          callback(user);
+        });
+      } else {
+        console.error("🔥 Firebase not configured - authentication unavailable");
+        callback(null);
+      }
+    }).catch((error) => {
+      console.error("🔥 Failed to initialize Firebase authentication:", error);
+      callback(null);
+    });
+
+    // Return unsubscribe function
     return () => {
-      mockAuthListeners.delete(callback);
+      if (unsubscribeRef) {
+        unsubscribeRef();
+      }
     };
   },
 
-  getCurrentUser: () => mockAuth.currentUser
-};
-
-// Enhanced unified auth interface with robust Firebase fallback
-export const authService = {
-  isFirebaseEnabled: isFirebaseConfigured && firebaseAuth.isAvailable(),
-  currentAuthMethod: 'detecting' as 'firebase' | 'mock' | 'detecting',
-
-  // Robust sign-in that tries Firebase first, falls back to mock if Firebase fails
-  signInWithGoogle: async () => {
-    // Try Firebase first if configured
-    if (isFirebaseConfigured && firebaseAuth.isAvailable()) {
-      try {
-        console.log("🔥 Attempting Firebase Google sign-in...");
-        const result = await firebaseAuth.signInWithGoogle();
-        authService.currentAuthMethod = 'firebase';
-        console.log("✅ Firebase authentication successful");
-        return result;
-      } catch (error) {
-        console.warn("⚠️ Firebase sign-in failed, falling back to mock authentication:", error);
-        authService.currentAuthMethod = 'mock';
-        return await mockAuth.signInWithGoogle();
-      }
-    } else {
-      // Use mock authentication
-      console.log("🟡 Using mock authentication (Firebase not configured or available)");
-      authService.currentAuthMethod = 'mock';
-      return await mockAuth.signInWithGoogle();
-    }
-  },
-
-  // Robust sign-out that tries both methods if needed
-  signOut: async () => {
-    try {
-      // Try Firebase first if we're using it
-      if (authService.currentAuthMethod === 'firebase' && firebaseAuth.isAvailable()) {
-        console.log("🔥 Signing out from Firebase...");
-        await firebaseAuth.signOut();
-      }
-    } catch (error) {
-      console.warn("⚠️ Firebase sign-out failed:", error);
-    }
-    
-    // Always try mock sign-out as well (to clear localStorage)
-    try {
-      await mockAuth.signOut();
-      console.log("✅ Sign-out successful");
-    } catch (error) {
-      console.warn("⚠️ Mock sign-out failed:", error);
-    }
-    
-    authService.currentAuthMethod = 'detecting';
-  },
-
-  // Enhanced auth state listener that tries Firebase first, falls back to mock
-  onAuthStateChanged: (callback: (user: any) => void) => {
-    if (isFirebaseConfigured && firebaseAuth.isAvailable()) {
-      // Try Firebase first
-      try {
-        console.log("🔥 Setting up Firebase auth state listener...");
-        
-        // Set up both listeners at registration time
-        const firebaseUnsubscribe = firebaseAuth.onAuthStateChanged((user) => {
-          if (user) {
-            authService.currentAuthMethod = 'firebase';
-            console.log("✅ Firebase user authenticated:", user.email);
-            callback(user);
-          } else {
-            // If no Firebase user, check mock auth state
-            authService.currentAuthMethod = 'mock';
-            const mockUser = mockAuth.getCurrentUser();
-            callback(mockUser);
-          }
-        });
-        
-        const mockUnsubscribe = mockAuth.onAuthStateChanged((mockUser) => {
-          // Only use mock user if Firebase isn't providing a user
-          if (authService.currentAuthMethod === 'mock') {
-            if (mockUser) {
-              console.log("🟡 Using mock user:", mockUser.email);
-            }
-            callback(mockUser);
-          }
-        });
-        
-        // Return combined unsubscribe function
-        return () => {
-          firebaseUnsubscribe();
-          mockUnsubscribe();
-        };
-      } catch (error) {
-        console.warn("⚠️ Firebase auth state listener failed, using mock:", error);
-        authService.currentAuthMethod = 'mock';
-        return mockAuth.onAuthStateChanged(callback);
-      }
-    } else {
-      // Use mock authentication
-      console.log("🟡 Setting up mock auth state listener...");
-      authService.currentAuthMethod = 'mock';
-      return mockAuth.onAuthStateChanged(callback);
-    }
-  },
-
-  // Get current user from active auth method
+  // Get current user from Firebase only
   getCurrentUser: () => {
-    if (authService.currentAuthMethod === 'firebase' && firebaseAuth.isAvailable()) {
+    if (firebaseAuth.isAvailable()) {
       return firebaseAuth.getCurrentUser();
-    } else {
-      return mockAuth.getCurrentUser();
     }
+    return null;
   },
-
-  // Get current authentication method
-  getAuthMethod: () => authService.currentAuthMethod,
 
   // Check if Firebase is configured (for UI display)
-  isFirebaseConfigured: () => isFirebaseConfigured
+  isFirebaseConfigured: () => isFirebaseConfigured,
+  
+  // Check if user is currently authenticated
+  isAuthenticated: () => {
+    return firebaseAuth.isAvailable() && firebaseAuth.getCurrentUser() !== null;
+  },
+
+  // Get current authentication method (always firebase now)
+  getAuthMethod: () => {
+    return isFirebaseConfigured ? 'firebase' : 'none';
+  }
 };
 
 export default authService;
