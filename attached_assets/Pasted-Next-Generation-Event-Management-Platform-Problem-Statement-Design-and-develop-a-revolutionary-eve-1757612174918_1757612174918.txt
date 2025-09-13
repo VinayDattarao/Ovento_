@@ -1,0 +1,43 @@
+Next-Generation Event Management Platform
+Problem Statement
+Design and develop a revolutionary event management platform that surpasses
+existing solutions like Unstop and Devfolio by offering superior UI/UX, advanced
+features, and seamless integration for organizers, participants, and sponsors. The
+platform should prioritize intuitive navigation, AI-driven personalization, and
+immersive experiences to enhance engagement in hackathons, conferences,
+webinars, and competitions, with a modern, accessible interface and innovative tools
+for collaboration and analytics.
+Key Features
+● Intuitive UI/UX Design: Implement a clean, modern interface with
+drag-and-drop event builders, customizable themes, and AI-suggested
+layouts for effortless navigation.
+● AI-Powered Matching and Recommendations: Use AI to match participants
+for team formation based on skills, interests, and past performance, and
+recommend events, sessions, or sponsors tailored to user profiles.
+● Immersive Virtual Events: Support VR/AR integration for virtual hackathons
+or conferences, with live streaming, interactive polls, and gamification
+elements like leaderboards and badges.
+● Advanced Collaboration Tools: Provide real-time chat, file sharing, virtual
+whiteboards, and integrated code editors for seamless teamwork.
+● Comprehensive Analytics Dashboard: Offer detailed insights for organizers
+on attendance, engagement metrics, ROI for sponsors, and participant
+feedback, with predictive analytics for future events.
+● Seamless Integrations: Integrate with calendars (Google, Outlook), payment
+gateways, social media, and tools like GitHub or Slack for automated
+notifications and workflows.
+● Enhanced Security and Privacy: Include role-based access, end-to-end
+encryption, and compliance with GDPR/CCPA for secure event management.
+● Mobile-First Experience: Develop a progressive web app (PWA) with offline
+capabilities, push notifications, and native-like performance on mobile
+devices.
+● Sustainability Tracking: Feature carbon footprint calculators for events and
+eco-friendly suggestions to promote green practices.
+● Practical Assessments: Include hands-on challenges, such as organizing a
+mock event or analyzing sample analytics, with AI feedback on usability and
+feature implementation.
+Objective
+Build an MVP that delivers a comprehensive, user-friendly, and innovative event
+management ecosystem, enhancing engagement and success for all stakeholders.
+Focus Areas
+Event Management, AI-Driven Personalization, UI/UX Design, Immersive
+Technology

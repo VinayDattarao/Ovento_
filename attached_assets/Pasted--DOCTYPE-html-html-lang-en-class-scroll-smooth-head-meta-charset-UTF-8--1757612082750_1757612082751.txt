@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus - Next-Gen Event Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0a0a0a;
+            color: #f0f0f0;
+        }
+
+        .gradient-text {
+            background: linear-gradient(90deg, #4f46e5, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .card-bg {
+            background-color: rgba(26, 26, 26, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        #hero-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .modal {
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal-body::-webkit-scrollbar, #chat-messages::-webkit-scrollbar, #group-chat-messages::-webkit-scrollbar, #private-chat-messages::-webkit-scrollbar, #notifications-list::-webkit-scrollbar, #org-review-list::-webkit-scrollbar, #team-members-list::-webkit-scrollbar {
+          width: 8px;
+        }
+        .modal-body::-webkit-scrollbar-track, #chat-messages::-webkit-scrollbar-track, #group-chat-messages::-webkit-scrollbar-track, #private-chat-messages::-webkit-scrollbar-track, #notifications-list::-webkit-scrollbar-track, #org-review-list::-webkit-scrollbar-track, #team-members-list::-webkit-scrollbar-track {
+          background: #1a1a1a;
+        }
+        .modal-body::-webkit-scrollbar-thumb, #chat-messages::-webkit-scrollbar-thumb, #group-chat-messages::-webkit-scrollbar-thumb, #private-chat-messages::-webkit-scrollbar-thumb, #notifications-list::-webkit-scrollbar-thumb, #org-review-list::-webkit-scrollbar-thumb, #team-members-list::-webkit-scrollbar-thumb {
+          background-color: #4f46e5;
+          border-radius: 20px;
+          border: 3px solid #1a1a1a;
+        }
+        .tab-active {
+            border-color: #4f46e5 !important;
+            background-color: rgba(79, 70, 229, 0.1);
+            color: #fff;
+        }
+        .notification-dot {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            width: 10px;
+            height: 10px;
+            background-color: #ec4899;
+            border-radius: 50%;
+            border: 2px solid #0a0a0a;
+        }
+    </style>
+</head>
+
+<body class="overflow-x-hidden">
+
+    <!-- Warning Banner for Local File Usage -->
+    <div id="local-server-warning" class="hidden fixed top-0 left-0 w-full bg-red-600 text-white p-4 text-center z-[200]">
+        <strong>Important:</strong> For login features to work, this file must be run from a local web server, not opened directly. <a href="https://developer.mozilla.org/en-US/docs/Learn/Common_questions/Tools_and_setup/set_up_a_local_testing_server" target="_blank" class="underline font-bold">Learn how to set one up here.</a>
+    </div>
+
+    <!-- Header -->
+    <header class="fixed w-full top-0 left-0 z-50 card-bg">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#home">
+                <h1 class="text-3xl font-bold gradient-text">Nexus</h1>
+            </a>
+            <nav class="hidden md:flex items-center space-x-8">
+                <a href="#events" class="text-gray-300 hover:text-white transition duration-300">Events</a>
+                <a href="#community" class="text-gray-300 hover:text-white transition duration-300">Community</a>
+                <a href="#winners" class="text-gray-300 hover:text-white transition duration-300">Winners</a>
+                <a href="#features" class="text-gray-300 hover:text-white transition duration-300">Features</a>
+            </nav>
+            <div class="flex items-center gap-4">
+                 <button id="host-event-btn" class="hidden bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition duration-300 text-sm">Host an Event</button>
+                <div id="auth-container">
+                    <button id="login-btn" class="bg-indigo-600 text-white px-5 py-2 rounded-lg hover:bg-indigo-700 transition duration-300 flex items-center gap-2">
+                        <i class="fab fa-google"></i> Join Now
+                    </button>
+                    <div id="user-actions" class="hidden items-center gap-4">
+                        <button id="notifications-btn" class="relative text-gray-300 hover:text-white text-xl">
+                            <i class="fas fa-bell"></i>
+                            <div id="notification-dot" class="hidden notification-dot"></div>
+                        </button>
+                        <div id="user-profile-btn" class="cursor-pointer">
+                            <img id="user-avatar" src="" alt="User Avatar" class="w-10 h-10 rounded-full border-2 border-indigo-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="home" class="relative min-h-screen flex items-center justify-center text-center overflow-hidden">
+        <canvas id="hero-canvas"></canvas>
+        <div class="relative z-10 px-6">
+            <h2 class="text-5xl md:text-7xl font-extrabold text-white leading-tight mb-4">The Future of <span class="gradient-text">Event Experiences</span> is Here.</h2>
+            <p class="text-xl text-gray-400 max-w-3xl mx-auto mb-8">A revolutionary platform with superior UI/UX, AI-driven personalization, and immersive experiences to enhance engagement in all your events.</p>
+            <div class="flex justify-center gap-4">
+                <button onclick="document.getElementById('features').scrollIntoView()" class="bg-pink-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-pink-700 transition duration-300 transform hover:scale-105">Explore Features</button>
+                <button onclick="document.getElementById('events').scrollIntoView()" class="border-2 border-indigo-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-indigo-500 transition duration-300 transform hover:scale-105">Browse Events</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- AI Recommended Events -->
+    <section id="recommended-events" class="py-20 hidden">
+        <div class="container mx-auto px-6">
+            <h3 class="text-4xl font-bold text-center mb-2">Recommended For You</h3>
+            <p class="text-center text-gray-400 mb-12">Based on your skills, we think you'll love these events.</p>
+            <div id="recommended-events-grid" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            </div>
+        </div>
+    </section>
+
+    <!-- All Events Section -->
+    <section id="events" class="py-20">
+        <div class="container mx-auto px-6">
+            <h3 class="text-4xl font-bold text-center mb-12">Explore Our <span class="gradient-text">Events</span></h3>
+            <div class="flex justify-center mb-8 border-b border-gray-800">
+                <button data-category="hackathons" class="event-tab tab-active text-lg font-semibold py-4 px-6 border-b-2 border-transparent transition-colors duration-300">Hackathons</button>
+                <button data-category="workshops" class="event-tab text-lg font-semibold py-4 px-6 border-b-2 border-transparent text-gray-400 transition-colors duration-300">Workshops</button>
+                <button data-category="quizzes" class="event-tab text-lg font-semibold py-4 px-6 border-b-2 border-transparent text-gray-400 transition-colors duration-300">Quizzes</button>
+            </div>
+            <div id="events-grid" class="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            </div>
+        </div>
+    </section>
+    
+    <!-- Community Section -->
+    <section id="community" class="py-20 bg-black bg-opacity-20">
+        <div class="container mx-auto px-6">
+            <h3 class="text-4xl font-bold text-center mb-12">Join The <span class="gradient-text">Nexus Community</span></h3>
+            <!-- Member Recommendations -->
+            <div>
+                <h4 class="text-2xl font-bold mb-2">Connect With Peers</h4>
+                <p class="text-gray-400 mb-8">Our AI suggests members you should connect with based on shared interests and skills.</p>
+                <div id="community-members-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6">
+                    <!-- Community members will be dynamically inserted here -->
+                </div>
+            </div>
+            <!-- Group Chats -->
+            <div class="mt-20">
+                <h4 class="text-2xl font-bold mb-2">Discover Group Chats</h4>
+                <p class="text-gray-400 mb-8">Join conversations on topics you're passionate about, or create your own group.</p>
+                <div id="chat-groups-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Chat groups will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Winners Section -->
+    <section id="winners" class="py-20">
+        <div class="container mx-auto px-6">
+            <h3 class="text-4xl font-bold text-center mb-12">Recent <span class="gradient-text">Winners</span></h3>
+            <div id="winners-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Winners will be dynamically inserted here -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-20 bg-black bg-opacity-20">
+        <div class="container mx-auto px-6">
+            <h3 class="text-4xl font-bold text-center mb-12">Why <span class="gradient-text">Nexus?</span></h3>
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                 <div class="card-bg p-8 rounded-2xl feature-card transition-all duration-300"><div class="text-4xl text-indigo-400 mb-4"><i class="fas fa-magic"></i></div><h4 class="text-2xl font-bold mb-2">Intuitive UI/UX</h4><p class="text-gray-400">Clean, modern interface with drag-and-drop builders and AI-suggested layouts.</p></div>
+                <div class="card-bg p-8 rounded-2xl feature-card transition-all duration-300"><div class="text-4xl text-pink-400 mb-4"><i class="fas fa-brain"></i></div><h4 class="text-2xl font-bold mb-2">AI-Powered Matching</h4><p class="text-gray-400">AI matches participants for teams and recommends events tailored to profiles.</p></div>
+                <div class="card-bg p-8 rounded-2xl feature-card transition-all duration-300"><div class="text-4xl text-indigo-400 mb-4"><i class="fas fa-vr-cardboard"></i></div><h4 class="text-2xl font-bold mb-2">Immersive Virtual Events</h4><p class="text-gray-400">Support for VR/AR, live streaming, interactive polls, and gamification.</p></div>
+                <div class="card-bg p-8 rounded-2xl feature-card transition-all duration-300"><div class="text-4xl text-pink-400 mb-4"><i class="fas fa-users"></i></div><h4 class="text-2xl font-bold mb-2">Advanced Collaboration</h4><p class="text-gray-400">Real-time chat, file sharing, virtual whiteboards, and integrated code editors.</p></div>
+                <div class="card-bg p-8 rounded-2xl feature-card transition-all duration-300"><div class="text-4xl text-indigo-400 mb-4"><i class="fas fa-chart-line"></i></div><h4 class="text-2xl font-bold mb-2">Comprehensive Analytics</h4><p class="text-gray-400">Detailed insights on attendance, engagement, ROI, and participant feedback.</p></div>
+                <div class="card-bg p-8 rounded-2xl feature-card transition-all duration-300"><div class="text-4xl text-pink-400 mb-4"><i class="fas fa-leaf"></i></div><h4 class="text-2xl font-bold mb-2">Sustainability Tracking</h4><p class="text-gray-400">Carbon footprint calculators and eco-friendly suggestions for green events.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer id="contact" class="card-bg mt-20">
+        <div class="container mx-auto px-6 py-12"><div class="grid md:grid-cols-3 gap-8"><div><h3 class="text-2xl font-bold gradient-text mb-4">Nexus</h3><p class="text-gray-400">The premier platform for next-generation event management.</p></div><div><h4 class="text-lg font-semibold mb-4">Quick Links</h4><ul><li><a href="#home" class="text-gray-400 hover:text-white">Home</a></li><li><a href="#events" class="text-gray-400 hover:text-white">Events</a></li><li><a href="#features" class="text-gray-400 hover:text-white">Features</a></li></ul></div><div><h4 class="text-lg font-semibold mb-4">Connect With Us</h4><div class="flex space-x-4"><a href="#" class="text-gray-400 hover:text-white text-2xl"><i class="fab fa-twitter"></i></a><a href="#" class="text-gray-400 hover:text-white text-2xl"><i class="fab fa-linkedin"></i></a><a href="#" class="text-gray-400 hover:text-white text-2xl"><i class="fab fa-github"></i></a></div></div></div><div class="border-t border-gray-800 mt-8 pt-6 text-center text-gray-500"><p>&copy; 2025 Nexus. All Rights Reserved.</p></div></div>
+    </footer>
+    
+    <!-- MODALS SECTION -->
+    <!-- Profile Modal -->
+    <div id="profile-modal" class="modal fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center hidden opacity-0">
+        <div class="card-bg rounded-2xl shadow-lg w-full max-w-4xl p-8 transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-3xl font-bold gradient-text">My Profile</h3>
+                <button id="close-profile-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Left Column: Avatar & Logout -->
+                <div class="md:col-span-1 text-center">
+                    <img id="profile-modal-avatar" class="w-32 h-32 rounded-full mx-auto border-4 border-indigo-500" src="">
+                    <h4 id="profile-modal-name" class="text-2xl mt-4 font-bold"></h4>
+                    <p id="profile-modal-email" class="text-gray-400"></p>
+                    <button id="logout-btn" class="w-full mt-6 bg-pink-600 text-white py-2 rounded-lg hover:bg-pink-700 transition duration-300">Logout</button>
+                </div>
+                <!-- Right Column: Details & Applications -->
+                <div class="md:col-span-2">
+                    <h4 class="text-xl font-semibold mb-4">My Details</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <input id="college-input" type="text" placeholder="College/Company" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="skills-input" type="text" placeholder="Your Skills (e.g. React, Python)" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="profile-github" type="url" placeholder="GitHub URL" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="profile-linkedin" type="url" placeholder="LinkedIn URL" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <input id="profile-resume" type="url" placeholder="Resume/Portfolio URL" class="sm:col-span-2 w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <button id="save-profile-btn" class="w-full mt-4 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition duration-300">Save Profile</button>
+                    
+                    <div class="mt-8 border-t border-gray-700 pt-6">
+                        <h4 class="text-xl font-semibold mb-4">My Applications</h4>
+                        <div id="registered-events-container" class="space-y-4 max-h-48 overflow-y-auto">
+                            <p class="text-gray-500">You haven't applied to any events yet.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Event Registration Modal -->
+    <div id="event-modal" class="modal fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center hidden opacity-0">
+         <div class="card-bg rounded-2xl shadow-lg w-full max-w-4xl h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <!-- Header -->
+            <div class="flex-shrink-0 p-6 flex justify-between items-center border-b border-gray-700">
+                <h3 id="event-modal-title" class="text-3xl font-bold gradient-text">Event Title</h3>
+                <button id="close-event-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <!-- Body -->
+            <div id="event-modal-body" class="flex-grow p-8 overflow-y-auto modal-body">
+                <!-- Step 1: Event Details -->
+                <div id="event-step-1">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div>
+                            <img id="event-modal-image" src="" class="w-full h-64 object-cover rounded-lg mb-4">
+                            <p id="event-modal-desc" class="text-gray-300"></p>
+                        </div>
+                        <div>
+                            <div class="flex items-center text-lg mb-4"><i class="fas fa-calendar-alt w-6 text-indigo-400"></i><span id="event-modal-date"></span></div>
+                            <div class="flex items-center text-lg mb-4"><i class="fas fa-map-marker-alt w-6 text-indigo-400"></i><span id="event-modal-location"></span></div>
+                            <div class="flex items-center text-lg mb-4"><i class="fas fa-leaf w-6 text-green-400"></i><span>Green Score: 8.5/10</span></div>
+                            <h4 class="text-xl font-bold mt-6 mb-2">Prizes</h4>
+                            <div id="event-modal-prizes" class="space-y-1 text-gray-300"></div>
+                            <h4 class="text-xl font-bold mt-6 mb-2">Prerequisites</h4>
+                            <div id="event-modal-prereqs" class="space-y-1 text-gray-300"></div>
+                        </div>
+                    </div>
+                    <h4 class="text-xl font-bold mt-8 mb-4">Schedule</h4>
+                    <div id="event-modal-schedule" class="space-y-3"></div>
+                     <h4 class="text-xl font-bold mt-8 mb-4">Sponsors</h4>
+                    <div id="event-modal-sponsors" class="flex items-center gap-6"></div>
+                    <div class="border-b border-gray-700 my-8"></div>
+                    <!-- Team Finder -->
+                    <div>
+                        <h4 class="text-xl font-bold mb-4">Looking for a team?</h4>
+                        <p class="text-gray-400 mb-4">Here are some participants looking for teammates. Our AI can help you find the perfect match based on skill compatibility.</p>
+                        <div id="teammate-list" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                    </div>
+                </div>
+                <!-- Step 2: Team Formation -->
+                <div id="event-step-2" class="hidden">
+                     <h3 class="text-2xl font-bold mb-6">Team Formation</h3>
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div class="card-bg p-6 rounded-lg">
+                            <h4 class="text-xl font-bold mb-4">Create a New Team</h4>
+                            <form id="create-team-form">
+                                <label class="block text-sm font-medium text-gray-400">Team Name</label>
+                                <input type="text" id="team-name-input" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 mt-1" required>
+                                <button type="submit" class="w-full mt-4 bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700">Create Team</button>
+                            </form>
+                        </div>
+                         <div class="card-bg p-6 rounded-lg">
+                            <h4 class="text-xl font-bold mb-4">Join an Existing Team</h4>
+                            <form id="join-team-form">
+                                <label class="block text-sm font-medium text-gray-400">Invite Code</label>
+                                <input type="text" id="invite-code-input" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 mt-1" required>
+                                <button type="submit" class="w-full mt-4 bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700">Join Team</button>
+                            </form>
+                        </div>
+                     </div>
+                     <div class="text-center my-6"><p class="text-gray-500">Or, you can register as a solo participant.</p></div>
+                </div>
+                <!-- Step 3: Registration Form -->
+                <div id="event-step-3" class="hidden">
+                     <h3 class="text-2xl font-bold mb-6">Your Application</h3>
+                     <p class="text-gray-400 mb-6">Please complete your profile information before submitting. Your progress is saved automatically.</p>
+                     <form id="registration-form" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-sm font-medium text-gray-400">Full Name</label><input type="text" id="reg-name" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 mt-1" disabled></div>
+                            <div><label class="block text-sm font-medium text-gray-400">Email Address</label><input type="email" id="reg-email" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 mt-1" disabled></div>
+                        </div>
+                        <div><label class="block text-sm font-medium text-gray-400">GitHub Profile <span class="text-red-500">*</span></label><input type="url" id="reg-github" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 mt-1" placeholder="https://github.com/username" required></div>
+                        <div><label class="block text-sm font-medium text-gray-400">LinkedIn Profile</label><input type="url" id="reg-linkedin" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 mt-1" placeholder="https://linkedin.com/in/username"></div>
+                        <div><label class="block text-sm font-medium text-gray-400">Resume/Portfolio URL</label><input type="url" id="reg-resume" class="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2 mt-1" placeholder="Link to your resume"></div>
+                        <div id="custom-questions-container"></div>
+                     </form>
+                </div>
+                <!-- Step 4: Confirmation -->
+                <div id="event-step-4" class="hidden text-center py-16">
+                    <div class="text-8xl text-green-400 mb-4"><i class="fas fa-check-circle"></i></div>
+                    <h3 class="text-4xl font-bold mb-2">Application Submitted!</h3>
+                    <p class="text-gray-400">You can check your application status in your profile.</p>
+                </div>
+                 <!-- NEW: Team Hub View -->
+                <div id="event-step-team-hub" class="hidden">
+                    <h3 id="hub-team-name" class="text-3xl font-bold mb-2"></h3>
+                    <div class="flex items-center gap-4 mb-6">
+                        <p class="text-gray-400">Invite Code:</p> 
+                        <span id="hub-invite-code" class="font-mono bg-gray-900 px-3 py-1 rounded"></span>
+                        <button id="copy-invite-code-btn" class="text-gray-400 hover:text-white"><i class="fas fa-copy"></i></button>
+                    </div>
+                    <h4 class="text-xl font-bold mb-4">Team Members</h4>
+                    <div id="team-members-list" class="space-y-3 max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+            <!-- Footer -->
+            <div class="flex-shrink-0 p-6 flex justify-between items-center gap-4 border-t border-gray-700">
+                 <div id="team-info-footer" class="hidden text-sm text-gray-400">
+                    <p>Team: <span id="footer-team-name" class="font-bold"></span></p>
+                </div>
+                <div class="flex-grow flex justify-end gap-4">
+                    <button id="event-modal-back-btn" class="hidden bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">Back</button>
+                    <button id="event-modal-next-btn" class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">Apply Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Collaboration Hub Modal -->
+    <div id="collab-modal" class="modal fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center hidden opacity-0">
+         <div class="card-bg rounded-2xl shadow-lg w-full max-w-5xl h-[80vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="p-4 flex justify-between items-center border-b border-gray-700"><h3 class="text-2xl font-bold gradient-text">Collaboration Hub</h3><button id="close-collab-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button></div>
+            <div class="flex-grow p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="card-bg rounded-lg p-4"><h4 class="font-bold mb-2">Virtual Whiteboard (Coming Soon)</h4><div class="bg-gray-800 w-full h-full rounded flex items-center justify-center text-gray-500"><i class="fas fa-pencil-ruler text-4xl"></i></div></div>
+                <div class="card-bg rounded-lg p-4 flex flex-col"><h4 class="font-bold mb-2">Integrated Code Editor</h4><textarea class="flex-grow bg-gray-900 font-mono text-sm p-2 rounded w-full h-full resize-none" placeholder="// Start coding here..."></textarea></div>
+            </div>
+         </div>
+    </div>
+    <!-- Group Chat Modal -->
+    <div id="group-chat-modal" class="modal fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center hidden opacity-0">
+         <div class="card-bg rounded-2xl shadow-lg w-full max-w-2xl h-[70vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="flex-shrink-0 p-4 flex justify-between items-center border-b border-gray-700">
+                <h3 id="group-chat-title" class="text-2xl font-bold gradient-text">Group Chat</h3>
+                <button id="close-group-chat-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="group-chat-messages" class="flex-grow p-4 overflow-y-auto space-y-4">
+                <!-- Group chat messages will appear here -->
+            </div>
+            <div class="flex-shrink-0 p-4 border-t border-gray-700">
+                <form id="group-chat-form" class="flex gap-2">
+                    <input id="group-chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 rounded-lg hover:bg-indigo-700 transition duration-300"><i class="fas fa-paper-plane"></i></button>
+                </form>
+            </div>
+         </div>
+    </div>
+    <!-- Private Chat Modal -->
+    <div id="private-chat-modal" class="modal fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center hidden opacity-0">
+         <div class="card-bg rounded-2xl shadow-lg w-full max-w-2xl h-[70vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="flex-shrink-0 p-4 flex justify-between items-center border-b border-gray-700">
+                <h3 id="private-chat-title" class="text-2xl font-bold gradient-text">Private Chat</h3>
+                <button id="close-private-chat-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="private-chat-messages" class="flex-grow p-4 overflow-y-auto space-y-4">
+                <!-- Private chat messages will appear here -->
+            </div>
+            <div class="flex-shrink-0 p-4 border-t border-gray-700">
+                <form id="private-chat-form" class="flex gap-2">
+                    <input id="private-chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 rounded-lg hover:bg-indigo-700 transition duration-300"><i class="fas fa-paper-plane"></i></button>
+                </form>
+            </div>
+         </div>
+    </div>
+    <!-- Notifications Modal -->
+    <div id="notifications-modal" class="modal fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center hidden opacity-0">
+        <div class="card-bg rounded-2xl shadow-lg w-full max-w-md p-6 transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-2xl font-bold gradient-text">Notifications</h3>
+                <button id="close-notifications-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="notifications-list" class="space-y-4 max-h-96 overflow-y-auto">
+                <p class="text-gray-500">No new notifications.</p>
+            </div>
+        </div>
+    </div>
+    <!-- Organizer Dashboard Modal -->
+    <div id="organizer-modal" class="modal fixed inset-0 z-[100] bg-black bg-opacity-70 flex items-center justify-center hidden opacity-0">
+        <div class="card-bg rounded-2xl shadow-lg w-full max-w-6xl h-[90vh] flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="flex-shrink-0 p-4 flex justify-between items-center border-b border-gray-700">
+                <h3 class="text-2xl font-bold gradient-text">Organizer Dashboard</h3>
+                <button id="close-organizer-modal" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div class="flex-grow flex">
+                <!-- Left Nav -->
+                <div class="w-1/4 p-4 border-r border-gray-700">
+                    <nav class="flex flex-col gap-2">
+                         <button data-tab="org-my-events" class="organizer-tab text-left p-3 rounded-lg hover:bg-gray-800 tab-active">My Events</button>
+                         <button data-tab="org-create-event" class="organizer-tab text-left p-3 rounded-lg hover:bg-gray-800">Create New Event</button>
+                         <button data-tab="org-announcements" class="organizer-tab text-left p-3 rounded-lg hover:bg-gray-800">Announcements</button>
+                    </nav>
+                </div>
+                <!-- Right Content -->
+                <div class="w-3/4 p-6 overflow-y-auto">
+                    <div id="org-my-events" class="organizer-content">
+                        <h3 class="text-xl font-bold mb-4">My Hosted Events</h3>
+                        <div id="my-hosted-events-list" class="space-y-4"></div>
+                    </div>
+                    <div id="org-create-event" class="hidden organizer-content">
+                         <h3 class="text-xl font-bold mb-4">Create a New Event</h3>
+                         <form id="create-event-form" class="space-y-4">
+                            <input type="text" id="event-create-name" placeholder="Event Name" class="w-full bg-gray-800 p-2 rounded" required>
+                            <textarea id="event-create-desc" placeholder="Event Description" class="w-full bg-gray-800 p-2 rounded" required></textarea>
+                            <input type="text" id="event-create-image" placeholder="Image URL" class="w-full bg-gray-800 p-2 rounded" required>
+                            <select id="event-create-category" class="w-full bg-gray-800 p-2 rounded">
+                                <option value="hackathons">Hackathon</option>
+                                <option value="workshops">Workshop</option>
+                                <option value="quizzes">Quiz</option>
+                            </select>
+                            <input type="text" id="event-create-prizes" placeholder="Prizes (comma-separated)" class="w-full bg-gray-800 p-2 rounded">
+                             <button type="submit" class="w-full bg-indigo-600 p-2 rounded-lg">Create Event</button>
+                         </form>
+                    </div>
+                    <div id="org-review" class="hidden organizer-content">
+                         <h3 class="text-xl font-bold mb-4">Review Applicants</h3>
+                         <table class="w-full text-left">
+                            <thead><tr class="border-b border-gray-700"><th class="p-3">User</th><th class="p-3">Name</th><th class="p-3">Event</th><th class="p-3">Status</th><th class="p-3">Actions</th></tr></thead>
+                            <tbody id="org-review-list"></tbody>
+                         </table>
+                    </div>
+                    <div id="org-announcements" class="hidden organizer-content">
+                         <h3 class="text-xl font-bold mb-4">Send Announcement</h3>
+                         <p>Send a message to all registered participants.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Chat Widget & Toast -->
+    <div id="chat-widget" class="fixed bottom-8 right-8 z-40 hidden">
+        <button id="chat-toggle-btn" class="bg-indigo-600 text-white w-16 h-16 rounded-full shadow-lg flex items-center justify-center text-3xl transform hover:scale-110 transition-transform duration-300">
+            <i class="fas fa-comments"></i>
+        </button>
+        <div id="chat-window" class="absolute bottom-20 right-0 w-80 h-96 card-bg rounded-2xl shadow-2xl flex-col hidden">
+            <div class="p-4 border-b border-gray-700">
+                <h3 class="text-lg font-bold gradient-text">Nexus Global Chat</h3>
+            </div>
+            <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-4"></div>
+            <div class="p-4 border-t border-gray-700">
+                <form id="chat-form" class="flex gap-2">
+                    <input id="chat-input" type="text" placeholder="Type a message..." class="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    <button type="submit" class="bg-indigo-600 text-white px-4 rounded-lg hover:bg-indigo-700 transition duration-300"><i class="fas fa-paper-plane"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div id="toast-notification" class="fixed bottom-8 left-1/2 -translate-x-1/2 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg hidden opacity-0 transition-all duration-300 z-[101]">
+        <p id="toast-message"></p>
+    </div>
+
+    <script>
+        // Starfield animation
+        window.addEventListener('DOMContentLoaded', () => {
+            let scene, camera, renderer, starGroups;
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
+            camera.position.z = 5;
+            renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#hero-canvas'), alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            const createStarLayer = (count, size, color) => {
+                const geo = new THREE.BufferGeometry();
+                const positions = new Float32Array(count * 3);
+                for (let i = 0; i < count * 3; i++) { positions[i] = (Math.random() - 0.5) * 20; }
+                geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                const material = new THREE.PointsMaterial({ size, color, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false });
+                return new THREE.Points(geo, material);
+            };
+            starGroups = [
+                { points: createStarLayer(1500, 0.01, 0xffffff), speed: 0.0001 },
+                { points: createStarLayer(1000, 0.02, 0xeeeeee), speed: 0.0002 },
+                { points: createStarLayer(500, 0.03, 0xdddddd), speed: 0.0003 }
+            ];
+            starGroups.forEach(group => scene.add(group.points));
+            const onWindowResize = () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            };
+            window.addEventListener('resize', onWindowResize, false);
+            const animate = () => {
+                starGroups.forEach(group => { group.points.rotation.x += group.speed; group.points.rotation.y += group.speed; });
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            };
+            animate();
+        });
+    </script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove, collection, addDoc, query, onSnapshot, where, serverTimestamp, orderBy, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        if (window.location.protocol === 'file:') {
+            document.getElementById('local-server-warning').classList.remove('hidden');
+        }
+        
+        const firebaseConfig = { /* PASTE YOUR FIREBASE CONFIGURATION OBJECT HERE */ };
+        
+        const appId = 'nexus-event-platform-final-v3';
+        
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        await setPersistence(auth, browserLocalPersistence);
+
+        // --- MOCK DATA GENERATION ---
+        let allEvents = { hackathons: [], workshops: [], quizzes: [] };
+        const mockCommunityMembers = [
+             { uid: 'user1-mock', name: 'Elena', skills: ['AI', 'Python'], photo: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=400&auto=format&fit=crop' },
+             { uid: 'user2-mock', name: 'Marcus', skills: ['Web3', 'Solidity'], photo: 'https://images.unsplash.com/photo-1568602471122-7832951cc4c5?q=80&w=400&auto=format&fit=crop' },
+             { uid: 'user3-mock', name: 'Sophia', skills: ['Design', 'Figma'], photo: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=400&auto=format&fit=crop' },
+             { uid: 'user4-mock', name: 'Leo', skills: ['Cloud', 'DevOps'], photo: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?q=80&w=400&auto=format&fit=crop' },
+             { uid: 'user5-mock', name: 'Isabelle', skills: ['Data Science'], photo: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?q=80&w=400&auto=format&fit=crop' },
+             { uid: 'user6-mock', name: 'Omar', skills: ['React', 'Web Dev'], photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=400&auto=format&fit=crop' }
+        ];
+        const mockChatGroups = [ { id: 'ai-enthusiasts', name: 'AI & Machine Learning', desc: 'Discuss the latest in AI, from LLMs to computer vision.', members: 128 }, { id: 'web3-builders', name: 'Web3 Builders', desc: 'For those building the decentralized future.', members: 92 }, { id: 'design-gurus', name: 'UI/UX Design Gurus', desc: 'Share your latest creations and get feedback.', members: 215 }];
+        const mockWinners = [
+            { team: 'Quantum Coders', event: 'InnovateAI Hackathon', project: 'AI-Powered Healthcare Diagnostics', prize: '1st Place' },
+            { team: 'Design Dynamos', event: 'Future of Design Conf', project: 'A Revolutionary Social Media UI', prize: 'Best Portfolio' },
+            { team: 'Cyber Sentinels', event: 'CyberShield Hackathon', project: 'Real-time Phishing Detector', prize: '2nd Place' },
+        ];
+
+        // --- UI Elements & State ---
+        let currentUser = null;
+        let currentUserData = {};
+        let currentEventData = {};
+        let currentStep = 1;
+        let userApplications = new Map();
+        let currentGroupChatListener = null;
+        let currentPrivateChatListener = null;
+        let currentTeamListener = null;
+        let allLiveEvents = { hackathons: [], workshops: [], quizzes: [] };
+
+
+        // --- Generic UI Functions ---
+        const $ = (selector) => document.querySelector(selector);
+        const $$ = (selector) => document.querySelectorAll(selector);
+
+        function showToast(message, isError = false) {
+            const toast = $('#toast-notification');
+            const toastMessage = $('#toast-message');
+            toastMessage.textContent = message;
+            toast.className = toast.className.replace(/bg-(green|red)-500/, isError ? 'bg-red-500' : 'bg-green-500');
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.remove('opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
+                setTimeout(() => toast.classList.add('hidden'), 300);
+            }, 3000);
+        }
+        
+        function openModal(modal) {
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('div').classList.remove('scale-95');
+            }, 10);
+        }
+
+        function closeModal(modal) {
+            modal.classList.add('opacity-0');
+            modal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // --- Authentication & Profile ---
+        const provider = new GoogleAuthProvider();
+        $('#login-btn').addEventListener('click', () => {
+             if (!firebaseConfig.apiKey) {
+                showToast("Firebase is not configured. Please paste your keys in the code.", true);
+                return;
+            }
+            signInWithPopup(auth, provider).catch(err => {
+                console.error("Auth error:", err);
+                showToast(`Login failed: ${err.message}`, true);
+            });
+        });
+
+        $('#logout-btn').addEventListener('click', () => {
+            signOut(auth);
+            closeModal($('#profile-modal'));
+        });
+        
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                currentUser = user;
+                $('#login-btn').classList.add('hidden');
+                $('#user-actions').classList.remove('hidden');
+                $('#user-actions').classList.add('flex');
+                $('#host-event-btn').classList.remove('hidden');
+                $('#user-avatar').src = user.photoURL;
+                $('#chat-widget').classList.remove('hidden');
+
+                const userRef = doc(db, `artifacts/${appId}/users`, user.uid);
+                await setDoc(userRef, { name: user.displayName, email: user.email, photoURL: user.photoURL, uid: user.uid }, { merge: true });
+                
+                listenToUserProfile();
+                listenToApplications();
+            } else {
+                currentUser = null;
+                currentUserData = {};
+                userApplications.clear();
+                $('#login-btn').classList.remove('hidden');
+                $('#user-actions').classList.add('hidden');
+                $('#user-actions').classList.remove('flex');
+                $('#host-event-btn').classList.add('hidden');
+                $('#chat-widget').classList.add('hidden');
+                $('#recommended-events').classList.add('hidden');
+                
+                const currentCategory = $('.tab-active').dataset.category;
+                populateEventsGrid(allLiveEvents[currentCategory] || [], $('#events-grid'), currentCategory);
+                populateCommunityHub();
+            }
+        });
+        
+        function listenToUserProfile() {
+             if (!currentUser) return;
+            const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
+            onSnapshot(userRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    currentUserData = snapshot.data();
+                    $('#profile-modal-avatar').src = currentUserData.photoURL || currentUser.photoURL;
+                    $('#profile-modal-name').textContent = currentUserData.name || currentUser.displayName;
+                    $('#profile-modal-email').textContent = currentUserData.email || currentUser.email;
+                    $('#college-input').value = currentUserData.college || '';
+                    $('#skills-input').value = (currentUserData.skills || []).join(', ');
+                    $('#profile-github').value = currentUserData.github || '';
+                    $('#profile-linkedin').value = currentUserData.linkedin || '';
+                    $('#profile-resume').value = currentUserData.resume || '';
+                    
+                    $('#notification-dot').classList.toggle('hidden', !(currentUserData.connectionRequests?.length > 0));
+                    
+                    displayRecommendedEvents();
+                    populateCommunityHub();
+                }
+            });
+        }
+        
+        $('#save-profile-btn').addEventListener('click', async () => {
+            if (!currentUser) return;
+            const userRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
+            const skills = $('#skills-input').value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+            const profileData = {
+                college: $('#college-input').value,
+                skills: skills,
+                github: $('#profile-github').value,
+                linkedin: $('#profile-linkedin').value,
+                resume: $('#profile-resume').value
+            };
+            await updateDoc(userRef, profileData);
+            showToast('Profile saved successfully!');
+        });
+
+        $('#user-profile-btn').addEventListener('click', () => openModal($('#profile-modal')));
+        $('#close-profile-modal').addEventListener('click', () => closeModal($('#profile-modal')));
+
+        // --- Community Hub & Connections ---
+        function populateCommunityHub() {
+             $('#community-members-grid').innerHTML = mockCommunityMembers.map(m => {
+                if (m.uid === currentUser?.uid) return ''; 
+                
+                let buttonHtml = '';
+                if(currentUser) {
+                    const isConnected = currentUserData.connections?.includes(m.uid);
+                    const requestSent = currentUserData.requestsSent?.includes(m.uid);
+                    const requestReceived = currentUserData.connectionRequests?.find(req => req.uid === m.uid);
+
+                    if (isConnected) {
+                        buttonHtml = `<button data-uid="${m.uid}" data-name="${m.name}" class="message-btn text-xs bg-indigo-600 px-3 py-1 rounded-full mt-2 hover:bg-indigo-700">Message</button>`;
+                    } else if (requestSent) {
+                        buttonHtml = `<button disabled class="text-xs bg-gray-500 px-3 py-1 rounded-full mt-2 cursor-not-allowed">Requested</button>`;
+                    } else if (requestReceived) {
+                        buttonHtml = `<button data-uid="${m.uid}" data-name="${m.name}" data-photo="${m.photo}" class="accept-request-btn text-xs bg-green-600 px-3 py-1 rounded-full mt-2 hover:bg-green-700">Accept</button>`;
+                    } else {
+                        buttonHtml = `<button data-uid="${m.uid}" data-name="${m.name}" data-photo="${m.photo}" class="connect-btn text-xs bg-gray-700 px-3 py-1 rounded-full mt-2 hover:bg-indigo-600">Connect</button>`;
+                    }
+                }
+
+                return `<div class="text-center"><img src="${m.photo}" class="w-24 h-24 rounded-full mx-auto mb-2 border-2 border-gray-700 object-cover"><h5 class="font-bold">${m.name}</h5><p class="text-xs text-indigo-400">${m.skills.join(', ')}</p>${buttonHtml}</div>`;
+            }).join('');
+            
+            $('#chat-groups-grid').innerHTML = mockChatGroups.map(g => `<div class="card-bg p-6 rounded-lg flex flex-col"><h4 class="text-xl font-bold">${g.name}</h4><p class="text-gray-400 text-sm flex-grow my-2">${g.desc}</p><div class="flex justify-between items-center"><span class="text-sm text-gray-500">${g.members} members</span><button data-group-id="${g.id}" data-group-name="${g.name}" class="join-group-btn bg-indigo-600 text-white px-4 py-1 rounded-lg text-sm hover:bg-indigo-700">Join</button></div></div>`).join('');
+            
+            $$('.connect-btn').forEach(btn => btn.addEventListener('click', sendConnectionRequest));
+            $$('.message-btn').forEach(btn => btn.addEventListener('click', openPrivateChat));
+            $$('.accept-request-btn').forEach(btn => btn.addEventListener('click', e => acceptConnectionRequest(e.target.dataset.uid, e.target.dataset.name, e.target.dataset.photo)));
+            $$('.join-group-btn').forEach(btn => btn.addEventListener('click', openGroupChat));
+        }
+
+        async function sendConnectionRequest(e) {
+            if (!currentUser) { showToast('Please log in to connect.', true); return; }
+            const targetId = e.target.dataset.uid;
+            const targetName = e.target.dataset.name;
+            const targetPhoto = e.target.dataset.photo;
+            
+            const currentUserRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
+            const targetUserRef = doc(db, `artifacts/${appId}/users`, targetId);
+
+            await updateDoc(currentUserRef, { requestsSent: arrayUnion(targetId) });
+            await updateDoc(targetUserRef, { connectionRequests: arrayUnion({ uid: currentUser.uid, name: currentUser.displayName, photo: currentUser.photoURL }) });
+            
+            showToast(`Connection request sent to ${targetName}.`, false);
+        }
+        
+        async function acceptConnectionRequest(senderId, senderName, senderPhoto) {
+            if (!currentUser) return;
+            const currentUserRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
+            const senderUserRef = doc(db, `artifacts/${appId}/users`, senderId);
+
+            // Remove from current user's requests and add to connections
+            await updateDoc(currentUserRef, {
+                connectionRequests: arrayRemove({ uid: senderId, name: senderName, photo: senderPhoto }),
+                connections: arrayUnion(senderId),
+                requestsSent: arrayRemove(senderId) // Also clean up if they sent one back
+            });
+
+            // Remove from sender's sent requests and add to their connections
+            await updateDoc(senderUserRef, {
+                requestsSent: arrayRemove(currentUser.uid),
+                connections: arrayUnion(currentUser.uid)
+            });
+
+            showToast(`You are now connected with ${senderName}.`, false);
+            closeModal($('#notifications-modal'));
+        }
+        
+        async function declineConnectionRequest(senderId, senderName, senderPhoto) {
+            if (!currentUser) return;
+            const currentUserRef = doc(db, `artifacts/${appId}/users`, currentUser.uid);
+            await updateDoc(currentUserRef, {
+                connectionRequests: arrayRemove({ uid: senderId, name: senderName, photo: senderPhoto })
+            });
+            showToast(`Connection request from ${senderName} declined.`, false);
+            // Re-render notifications
+            $('#notifications-btn').click();
+            $('#notifications-btn').click();
+        }
+
+        $('#notifications-btn').addEventListener('click', () => {
+            const list = $('#notifications-list');
+            list.innerHTML = '';
+            if (currentUserData.connectionRequests && currentUserData.connectionRequests.length > 0) {
+                currentUserData.connectionRequests.forEach(req => {
+                    list.innerHTML += `<div class="card-bg p-3 rounded-lg flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <img src="${req.photo}" class="w-10 h-10 rounded-full">
+                            <p><span class="font-bold">${req.name}</span> wants to connect.</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button data-uid="${req.uid}" data-name="${req.name}" data-photo="${req.photo}" class="accept-request-btn-notif bg-green-600 px-3 py-1 rounded-lg text-sm hover:bg-green-700">Accept</button>
+                            <button data-uid="${req.uid}" data-name="${req.name}" data-photo="${req.photo}" class="decline-request-btn-notif bg-red-600 px-3 py-1 rounded-lg text-sm hover:bg-red-700">Decline</button>
+                        </div>
+                    </div>`;
+                });
+                $$('.accept-request-btn-notif').forEach(btn => btn.addEventListener('click', e => acceptConnectionRequest(e.target.dataset.uid, e.target.dataset.name, e.target.dataset.photo)));
+                $$('.decline-request-btn-notif').forEach(btn => btn.addEventListener('click', e => declineConnectionRequest(e.target.dataset.uid, e.target.dataset.name, e.target.dataset.photo)));
+            } else {
+                list.innerHTML = `<p class="text-gray-500">No new notifications.</p>`;
+            }
+            openModal($('#notifications-modal'));
+        });
+        $('#close-notifications-modal').addEventListener('click', () => closeModal($('#notifications-modal')));
+
+        // --- Event Display & Application Status ---
+        function createEventCard(event, category) {
+            const app = userApplications.get(event.id);
+            let buttonHtml = '';
+            if (app) {
+                 buttonHtml = `<button data-event-id="${event.id}" data-category="${category}" class="open-details-btn w-full mt-4 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600">Manage Application</button>`;
+            } else {
+                 buttonHtml = `<button data-event-id="${event.id}" data-category="${category}" class="open-details-btn w-full mt-4 bg-${event.color}-600 text-white py-2 rounded-lg hover:bg-${event.color}-700 transition duration-300">View Details</button>`;
+            }
+            return `<div class="card-bg rounded-2xl overflow-hidden flex flex-col transform hover:-translate-y-2 transition-transform duration-300 shadow-lg hover:shadow-2xl hover:shadow-${event.color}-500/20"><img src="${event.image}" alt="Event Image" class="w-full h-40 object-cover"><div class="p-4 flex flex-col flex-grow"><h4 class="text-lg font-bold mb-2 flex-grow">${event.name}</h4><div class="text-xs text-gray-400"><span><i class="far fa-calendar-alt mr-2"></i>${event.date}</span></div>${buttonHtml}</div></div>`;
+        }
+
+        function populateEventsGrid(eventsToShow, gridElement, category) {
+            gridElement.innerHTML = eventsToShow.map(event => createEventCard(event, category)).join('');
+            $$('.open-details-btn').forEach(button => button.addEventListener('click', (e) => openEventModal(e.currentTarget.dataset.eventId, e.currentTarget.dataset.category)));
+        }
+        
+        function displayRecommendedEvents() {
+            if (!currentUser || !currentUserData.skills || currentUserData.skills.length === 0) {
+                $('#recommended-events').classList.add('hidden');
+                return;
+            }
+            const allEventList = [].concat(...Object.values(allLiveEvents));
+            const recommended = allEventList.filter(event => event.tags.some(tag => currentUserData.skills.includes(tag.toLowerCase())));
+            if (recommended.length > 0) {
+                const currentCategory = $('.tab-active').dataset.category;
+                populateEventsGrid(recommended.slice(0, 4), $('#recommended-events-grid'), currentCategory);
+                $('#recommended-events').classList.remove('hidden');
+            } else {
+                 $('#recommended-events').classList.add('hidden');
+            }
+        }
+
+        $$('.event-tab').forEach(tab => tab.addEventListener('click', (e) => {
+            const category = e.target.dataset.category;
+            $$('.event-tab').forEach(t => t.classList.remove('tab-active', 'text-white') || t.classList.add('text-gray-400'));
+            e.target.classList.add('tab-active', 'text-white');
+            e.target.classList.remove('text-gray-400');
+            
+            populateEventsGrid(allLiveEvents[category], $('#events-grid'), category);
+        }));
+        
+        // --- COMPLETE EVENT REGISTRATION WORKFLOW ---
+        async function openEventModal(eventId, category) {
+            const event = allLiveEvents[category].find(e => e.id === eventId);
+            if (!event) return;
+            currentEventData = event;
+            
+            // Step 1
+            $('#event-modal-title').textContent = event.name;
+            $('#event-modal-image').src = event.image;
+            $('#event-modal-desc').textContent = event.desc;
+            $('#event-modal-date').textContent = event.date;
+            $('#event-modal-location').textContent = event.location;
+            $('#event-modal-prizes').innerHTML = (event.prizes || []).map(p => `<li><i class="fas fa-trophy mr-2 text-yellow-400"></i>${p}</li>`).join('');
+            $('#event-modal-prereqs').innerHTML = (event.prereqs || []).map(p => `<li><i class="fas fa-check mr-2 text-green-400"></i>${p}</li>`).join('');
+            $('#event-modal-schedule').innerHTML = (event.schedule || []).map(s => `<div class="flex gap-4"><span class="font-bold text-indigo-300 w-28">${s.time}</span><p>${s.topic}</p></div>`).join('');
+            $('#event-modal-sponsors').innerHTML = (event.sponsors || []).map(s => `<img src="${s}" alt="Sponsor" class="h-10">`).join('');
+            $('#teammate-list').innerHTML = mockCommunityMembers.map(t => `<div class="text-center p-2 card-bg rounded-lg"><img src="${t.photo}" class="w-16 h-16 rounded-full mx-auto mb-2"><h5 class="font-bold">${t.name}</h5><p class="text-xs text-gray-400">${t.skills.join(', ')}</p></div>`).join('');
+            
+            // Step 3
+            if(currentUser) {
+                $('#reg-name').value = currentUser.displayName;
+                $('#reg-email').value = currentUser.email;
+                $('#reg-github').value = currentUserData.github || '';
+                $('#reg-linkedin').value = currentUserData.linkedin || '';
+                $('#reg-resume').value = currentUserData.resume || '';
+            }
+
+            // Check if user is already in a team for this event
+            const userApp = userApplications.get(event.id);
+            if(userApp && userApp.teamId && userApp.teamId !== 'solo'){
+                await showTeamHub(userApp.teamId);
+            } else {
+                setModalStep(1);
+            }
+            openModal($('#event-modal'));
+        }
+        
+        $('#close-event-modal').addEventListener('click', () => {
+            if(currentTeamListener) currentTeamListener();
+            closeModal($('#event-modal'));
+        });
+        
+        function setModalStep(step) {
+            currentStep = step;
+            $('#event-modal-body').scrollTop = 0;
+            const steps = [1, 2, 3, 4, 'team-hub'];
+            steps.forEach(s => $(`#event-step-${s}`).classList.toggle('hidden', s !== step));
+            
+            $('#event-modal-back-btn').classList.toggle('hidden', step === 1 || step === 'team-hub');
+            const nextBtn = $('#event-modal-next-btn');
+            
+            if (step === 1) { nextBtn.textContent = 'Apply Now'; nextBtn.classList.remove('hidden'); }
+            if (step === 2) { nextBtn.textContent = 'Continue Application'; nextBtn.classList.remove('hidden'); }
+            if (step === 3) { nextBtn.textContent = 'Submit Application'; nextBtn.classList.remove('hidden'); }
+            if (step === 4 || step === 'team-hub') { nextBtn.classList.add('hidden'); }
+        }
+        
+        $('#event-modal-next-btn').addEventListener('click', async () => {
+            if (!currentUser) { showToast('Please log in to register.', true); return; }
+            if (currentStep === 1) { 
+                if(currentEventData.category === 'hackathons') {
+                    setModalStep(2); 
+                } else {
+                    setModalStep(3); // Skip team step for non-hackathons
+                }
+            } 
+            else if (currentStep === 2) { setModalStep(3); } 
+            else if (currentStep === 3) {
+                const requiredFields = [$('#reg-github')];
+                const allFilled = requiredFields.every(field => field.value.trim() !== '');
+                if (!allFilled && currentEventData.category === 'hackathons') {
+                    showToast('Please fill all required fields.', true);
+                    return;
+                }
+                
+                const applicationData = {
+                    userId: currentUser.uid,
+                    userName: currentUser.displayName,
+                    userPhoto: currentUser.photoURL,
+                    eventId: currentEventData.id,
+                    eventName: currentEventData.name,
+                    status: 'submitted',
+                    submittedAt: serverTimestamp(),
+                    teamId: $('#footer-invite-code').textContent || 'solo',
+                    github: $('#reg-github').value,
+                    linkedin: $('#reg-linkedin').value,
+                    resume: $('#reg-resume').value
+                };
+                const appRef = doc(db, `artifacts/${appId}/applications`, `${currentUser.uid}_${currentEventData.id}`);
+                await setDoc(appRef, applicationData);
+                setModalStep(4);
+                setTimeout(() => closeModal($('#event-modal')), 2000);
+            }
+        });
+        
+        $('#event-modal-back-btn').addEventListener('click', () => setModalStep(currentStep - 1));
+
+        $('#create-team-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const teamName = $('#team-name-input').value;
+            const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            const teamRef = doc(db, `artifacts/${appId}/public/data/teams`, inviteCode);
+
+            await setDoc(teamRef, {
+                name: teamName,
+                eventId: currentEventData.id,
+                leader: { uid: currentUser.uid, name: currentUser.displayName },
+                members: [{ uid: currentUser.uid, name: currentUser.displayName, photo: currentUser.photoURL, status: 'incomplete' }]
+            });
+
+            const appRef = doc(db, `artifacts/${appId}/applications`, `${currentUser.uid}_${currentEventData.id}`);
+            await setDoc(appRef, {
+                userId: currentUser.uid,
+                eventId: currentEventData.id,
+                status: 'team_joined',
+                teamId: inviteCode
+            });
+
+            showToast(`Team "${teamName}" created! Share the code.`, false);
+            await showTeamHub(inviteCode);
+        });
+        
+        $('#join-team-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const inviteCode = $('#invite-code-input').value.toUpperCase();
+            const teamRef = doc(db, `artifacts/${appId}/public/data/teams`, inviteCode);
+            const teamSnap = await getDoc(teamRef);
+            if (teamSnap.exists()) {
+                await updateDoc(teamRef, { members: arrayUnion({ uid: currentUser.uid, name: currentUser.displayName, photo: currentUser.photoURL, status: 'incomplete' }) });
+                const teamData = teamSnap.data();
+
+                const appRef = doc(db, `artifacts/${appId}/applications`, `${currentUser.uid}_${currentEventData.id}`);
+                await setDoc(appRef, {
+                    userId: currentUser.uid,
+                    eventId: currentEventData.id,
+                    status: 'team_joined',
+                    teamId: inviteCode
+                });
+
+                showToast(`Successfully joined "${teamData.name}"!`, false);
+                await showTeamHub(inviteCode);
+            } else {
+                showToast('Invalid invite code.', true);
+            }
+        });
+
+        async function showTeamHub(teamId) {
+            if(currentTeamListener) currentTeamListener(); // Unsubscribe from previous listener
+            
+            const teamRef = doc(db, `artifacts/${appId}/public/data/teams`, teamId);
+            currentTeamListener = onSnapshot(teamRef, (docSnap) => {
+                if(docSnap.exists()) {
+                    const teamData = docSnap.data();
+                    $('#hub-team-name').textContent = teamData.name;
+                    $('#hub-invite-code').textContent = teamId;
+                    $('#footer-team-name').textContent = teamData.name;
+                    $('#team-info-footer').classList.remove('hidden');
+
+                    const membersList = $('#team-members-list');
+                    membersList.innerHTML = teamData.members.map(member => {
+                        const isLeader = member.uid === teamData.leader.uid;
+                        return `<div class="card-bg p-3 rounded-lg flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <img src="${member.photo}" class="w-10 h-10 rounded-full">
+                                <div>
+                                    <p class="font-bold">${member.name} ${isLeader ? '<span class="text-xs bg-indigo-500 px-2 py-0.5 rounded-full">Leader</span>' : ''}</p>
+                                    <p class="text-xs text-gray-400">Application: ${member.status}</p>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+            });
+            setModalStep('team-hub');
+        }
+        
+        // --- APPLICATION MANAGEMENT ---
+        function listenToApplications() {
+            if (!currentUser) return;
+            const q = query(collection(db, `artifacts/${appId}/applications`), where("userId", "==", currentUser.uid));
+            onSnapshot(q, (snapshot) => {
+                userApplications.clear();
+                snapshot.docs.forEach(doc => {
+                    const app = doc.data();
+                    userApplications.set(app.eventId, app);
+                });
+                const currentCategory = $('.tab-active').dataset.category;
+                populateEventsGrid(allLiveEvents[currentCategory] || [], $('#events-grid'), currentCategory);
+                updateRegisteredEventsList();
+            });
+        }
+        
+        async function withdrawApplication(eventId) {
+            await deleteDoc(doc(db, `artifacts/${appId}/applications`, `${currentUser.uid}_${eventId}`));
+            showToast('Application withdrawn.', false);
+        }
+
+        function updateRegisteredEventsList() {
+             const container = $('#registered-events-container');
+             if(userApplications.size === 0) {
+                container.innerHTML = '<p class="text-gray-500">You haven\'t applied to any events yet.</p>';
+                return;
+             }
+            container.innerHTML = '';
+            const allEventList = [].concat(...Object.values(allLiveEvents));
+            userApplications.forEach((app, eventId) => {
+                const event = allEventList.find(e => e.id === eventId);
+                if(event) {
+                    const statusColor = app.status === 'accepted' ? 'text-green-400' : 'text-yellow-400';
+                    container.innerHTML += `<div class="card-bg p-4 rounded-lg">
+                        <div class="flex justify-between items-center">
+                            <div><p class="font-bold text-white">${event.name}</p><p class="text-sm ${statusColor}">Status: ${app.status}</p></div>
+                            <div class="flex gap-2">
+                                ${app.status === 'accepted' ? `<button class="open-collab-btn bg-indigo-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-indigo-700">Hub</button>` : ''}
+                                <button data-event-id="${eventId}" class="withdraw-btn bg-red-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-red-700">Withdraw</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+            });
+            $$('.open-collab-btn').forEach(btn => btn.addEventListener('click', () => openModal($('#collab-modal'))));
+            $$('.withdraw-btn').forEach(btn => btn.addEventListener('click', e => withdrawApplication(e.target.dataset.eventId)));
+        }
+
+        $('#close-collab-modal').addEventListener('click', () => closeModal($('#collab-modal')));
+
+        // --- ORGANIZER DASHBOARD ---
+        $('#host-event-btn').addEventListener('click', () => {
+             const q = query(collection(db, `artifacts/${appId}/applications`));
+             onSnapshot(q, (snapshot) => {
+                const reviewList = $('#org-review-list');
+                reviewList.innerHTML = '';
+                if(snapshot.empty) {
+                    reviewList.innerHTML = '<tr><td colspan="4" class="text-center p-4 text-gray-500">No applications yet.</td></tr>';
+                    return;
+                }
+                snapshot.docs.forEach(doc => {
+                    const app = doc.data();
+                    const appId = doc.id;
+                    reviewList.innerHTML += `<tr class="border-b border-gray-700">
+                        <td class="p-3"><img src="${app.userPhoto}" class="w-8 h-8 rounded-full"></td>
+                        <td class="p-3">${app.userName}</td>
+                        <td class="p-3">${app.eventName}</td>
+                        <td class="p-3">${app.status}</td>
+                        <td class="p-3">
+                            <button data-appid="${appId}" class="accept-app-btn bg-green-600 px-2 py-1 text-xs rounded">Accept</button>
+                            <button data-appid="${appId}" class="reject-app-btn bg-red-600 px-2 py-1 text-xs rounded">Reject</button>
+                        </td>
+                    </tr>`;
+                });
+                $$('.accept-app-btn').forEach(btn => btn.addEventListener('click', e => updateApplicationStatus(e.target.dataset.appid, 'accepted')));
+                $$('.reject-app-btn').forEach(btn => btn.addEventListener('click', e => updateApplicationStatus(e.target.dataset.appid, 'rejected')));
+             });
+
+            openModal($('#organizer-modal'));
+        });
+        $('#close-organizer-modal').addEventListener('click', () => closeModal($('#organizer-modal')));
+        $$('.organizer-tab').forEach(tab => {
+            tab.addEventListener('click', e => {
+                const tabId = e.target.dataset.tab;
+                $$('.organizer-tab').forEach(t => t.classList.remove('tab-active'));
+                e.target.classList.add('tab-active');
+                $$('.organizer-content').forEach(c => c.classList.add('hidden'));
+                $(`#${tabId}`).classList.remove('hidden');
+            })
+        })
+        
+        async function updateApplicationStatus(appId, newStatus) {
+            await updateDoc(doc(db, `artifacts/${appId}/applications`, appId), { status: newStatus });
+            showToast(`Application status updated to ${newStatus}.`, false);
+        }
+        
+        // --- CHAT SYSTEMS ---
+        function openPrivateChat(e) {
+            if (!currentUser) return;
+            const targetId = e.target.dataset.uid;
+            const targetName = e.target.dataset.name;
+
+            const chatId = [currentUser.uid, targetId].sort().join('_');
+            
+            $('#private-chat-title').textContent = `Chat with ${targetName}`;
+            $('#private-chat-messages').innerHTML = '<p class="text-gray-500 text-center">Loading messages...</p>';
+            
+            if (currentPrivateChatListener) currentPrivateChatListener();
+
+            const chatCollectionRef = collection(db, `private_chats/${chatId}/messages`);
+            const q = query(chatCollectionRef, orderBy("createdAt"));
+
+            currentPrivateChatListener = onSnapshot(q, (snapshot) => {
+                const messagesContainer = $('#private-chat-messages');
+                messagesContainer.innerHTML = '';
+                snapshot.docs.forEach(doc => {
+                    const msg = doc.data();
+                    const isCurrentUser = msg.senderId === currentUser.uid;
+                    messagesContainer.innerHTML += `<div class="flex items-start gap-3 ${isCurrentUser ? 'justify-end' : 'justify-start'}">
+                        ${!isCurrentUser ? `<img src="${msg.photoURL}" class="w-8 h-8 rounded-full">` : ''}
+                        <div class="flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}">
+                            <div class="px-4 py-2 rounded-2xl ${isCurrentUser ? 'bg-indigo-600 rounded-br-none' : 'card-bg rounded-bl-none'}">${msg.text}</div>
+                        </div>
+                        ${isCurrentUser ? `<img src="${currentUser.photoURL}" class="w-8 h-8 rounded-full">` : ''}
+                    </div>`;
+                });
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+
+            $('#private-chat-form').onsubmit = async (event) => {
+                event.preventDefault();
+                const input = $('#private-chat-input');
+                if (!input.value.trim()) return;
+                
+                await addDoc(chatCollectionRef, { text: input.value, senderId: currentUser.uid, photoURL: currentUser.photoURL, createdAt: serverTimestamp() });
+                input.value = '';
+            };
+            
+            openModal($('#private-chat-modal'));
+        }
+        $('#close-private-chat-modal').addEventListener('click', () => {
+             if (currentPrivateChatListener) { currentPrivateChatListener(); currentPrivateChatListener = null; }
+            closeModal($('#private-chat-modal'));
+        });
+        
+        function openGroupChat(e) {
+            if (!currentUser) { showToast('Please log in to join groups.', true); return; }
+            const groupId = e.target.dataset.groupId;
+            const groupName = e.target.dataset.groupName;
+            $('#group-chat-title').textContent = groupName;
+            $('#group-chat-messages').innerHTML = '<p class="text-gray-500 text-center">Loading messages...</p>';
+            if (currentGroupChatListener) currentGroupChatListener();
+
+            const chatCollectionRef = collection(db, `artifacts/${appId}/public/data/groups/${groupId}/messages`);
+            const q = query(chatCollectionRef, orderBy("createdAt"));
+
+            currentGroupChatListener = onSnapshot(q, (snapshot) => {
+                const messagesContainer = $('#group-chat-messages');
+                messagesContainer.innerHTML = '';
+                snapshot.docs.forEach(doc => {
+                    const msg = doc.data();
+                    const isCurrentUser = msg.userId === currentUser?.uid;
+                    messagesContainer.innerHTML += `<div class="flex items-start gap-3 ${isCurrentUser ? 'justify-end' : 'justify-start'}">${!isCurrentUser ? `<img src="${msg.userPhotoURL}" class="w-8 h-8 rounded-full">` : ''}<div class="flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}"><div class="text-xs text-gray-500 mb-1">${msg.userName}</div><div class="px-4 py-2 rounded-2xl ${isCurrentUser ? 'bg-indigo-600 rounded-br-none' : 'card-bg rounded-bl-none'}">${msg.text}</div></div>${isCurrentUser ? `<img src="${msg.userPhotoURL}" class="w-8 h-8 rounded-full">` : ''}</div>`;
+                });
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            });
+            $('#group-chat-form').onsubmit = async (event) => {
+                event.preventDefault();
+                const input = $('#group-chat-input');
+                if (!input.value.trim()) return;
+                await addDoc(chatCollectionRef, { text: input.value, userId: currentUser.uid, userName: currentUser.displayName, userPhotoURL: currentUser.photoURL, createdAt: serverTimestamp() });
+                input.value = '';
+            };
+            openModal($('#group-chat-modal'));
+        }
+        $('#close-group-chat-modal').addEventListener('click', () => {
+             if (currentGroupChatListener) { currentGroupChatListener(); currentGroupChatListener = null; }
+            closeModal($('#group-chat-modal'));
+        });
+
+        // --- Global Chat ---
+        $('#chat-toggle-btn').addEventListener('click', () => $('#chat-window').classList.toggle('hidden') || $('#chat-window').classList.toggle('flex'));
+        $('#chat-form').addEventListener('submit', async (e) => {
+             e.preventDefault();
+            if (!currentUser || !$('#chat-input').value.trim()) return;
+            await addDoc(collection(db, `artifacts/${appId}/public/data/chat`), { text: $('#chat-input').value, userId: currentUser.uid, userName: currentUser.displayName, userPhotoURL: currentUser.photoURL, createdAt: serverTimestamp() });
+            $('#chat-input').value = '';
+        });
+        const chatQuery = query(collection(db, `artifacts/${appId}/public/data/chat`), orderBy("createdAt"));
+        onSnapshot(chatQuery, (snapshot) => {
+             const chatMessages = $('#chat-messages');
+             chatMessages.innerHTML = '';
+             snapshot.docs.forEach(doc => {
+                 const msg = doc.data();
+                 const isCurrentUser = msg.userId === currentUser?.uid;
+                 chatMessages.innerHTML += `<div class="flex items-start gap-3 ${isCurrentUser ? 'justify-end' : 'justify-start'}">${!isCurrentUser ? `<img src="${msg.userPhotoURL}" class="w-8 h-8 rounded-full">` : ''}<div class="flex flex-col ${isCurrentUser ? 'items-end' : 'items-start'}"><div class="text-xs text-gray-500 mb-1">${msg.userName}</div><div class="px-4 py-2 rounded-2xl ${isCurrentUser ? 'bg-indigo-600 rounded-br-none' : 'card-bg rounded-bl-none'}">${msg.text}</div></div>${isCurrentUser ? `<img src="${msg.userPhotoURL}" class="w-8 h-8 rounded-full">` : ''}</div>`;
+             });
+             chatMessages.scrollTop = chatMessages.scrollHeight;
+        });
+
+        // --- WINNERS SECTION ---
+        function populateWinners() {
+            $('#winners-grid').innerHTML = mockWinners.map(w => `<div class="card-bg p-6 rounded-lg text-center"><div class="text-4xl text-yellow-400 mb-4"><i class="fas fa-trophy"></i></div><h4 class="text-xl font-bold">${w.team}</h4><p class="text-gray-400">${w.project}</p><div class="mt-4 pt-4 border-t border-gray-700"><p class="font-bold gradient-text">${w.prize}</p><p class="text-sm text-gray-500">${w.event}</p></div></div>`).join('');
+        }
+        
+        // --- LIVE EVENT DATA LISTENER ---
+        async function listenToLiveEvents() {
+            const eventsRef = collection(db, `artifacts/${appId}/public/data/events`);
+            const q = query(eventsRef, orderBy("createdAt", "desc"));
+            onSnapshot(q, (snapshot) => {
+                allLiveEvents = { hackathons: [], workshops: [], quizzes: [] };
+                snapshot.docs.forEach(doc => {
+                    const event = { id: doc.id, ...doc.data() };
+                    if (allLiveEvents[event.category]) {
+                        allLiveEvents[event.category].push(event);
+                    }
+                });
+                const currentCategory = $('.tab-active').dataset.category;
+                populateEventsGrid(allLiveEvents[currentCategory], $('#events-grid'), currentCategory);
+            });
+        }
+
+        // --- Initial Load ---
+        async function main() {
+            await listenToLiveEvents();
+            populateCommunityHub();
+            populateWinners();
+        }
+        main();
+    </script>
+</body>
+</html>
+
