@@ -25,7 +25,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Configuration routes
+  // Configuration routes - always return 200 for graceful fallback
   app.get('/api/config/firebase', async (req, res) => {
     try {
       // Provide Firebase config from server environment variables
@@ -38,15 +38,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         appId: process.env.FIREBASE_APP_ID,
       };
       
-      // Only send config if all required fields are present
+      // Always return 200 - frontend can handle graceful fallback
       if (firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId) {
-        res.json(firebaseConfig);
+        res.json({ configured: true, ...firebaseConfig });
       } else {
-        res.status(404).json({ message: "Firebase not configured" });
+        res.json({ configured: false });
       }
     } catch (error) {
       console.error("Error fetching Firebase config:", error);
-      res.status(500).json({ message: "Failed to fetch Firebase config" });
+      res.json({ configured: false });
     }
   });
 

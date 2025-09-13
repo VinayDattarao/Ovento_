@@ -24,9 +24,6 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5000,
-    hmr: {
-      port: 24678,
-    },
     fs: {
       strict: true,
       deny: ["**/.*"],

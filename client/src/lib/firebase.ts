@@ -30,11 +30,14 @@ async function loadFirebaseConfigFromServer() {
     const response = await fetch('/api/config/firebase');
     if (response.ok) {
       const serverConfig = await response.json();
-      if (serverConfig.apiKey) {
+      if (serverConfig.configured && serverConfig.apiKey) {
         firebaseConfig = serverConfig;
         isFirebaseConfigured = true;
         console.log("🔥 Using Firebase config from server");
         return true;
+      } else {
+        console.log("🔥 Firebase not configured on server");
+        return false;
       }
     }
   } catch (error) {
@@ -51,7 +54,11 @@ let googleProvider: GoogleAuthProvider | null = null;
 async function initializeFirebase() {
   // If not configured with VITE variables, try loading from server
   if (!isFirebaseConfigured) {
-    await loadFirebaseConfigFromServer();
+    const serverConfigLoaded = await loadFirebaseConfigFromServer();
+    if (!serverConfigLoaded) {
+      console.log("🔥 Firebase not configured - running without authentication");
+      return false;
+    }
   }
 
   // Initialize Firebase if configuration is available
@@ -64,13 +71,12 @@ async function initializeFirebase() {
       return true;
     } catch (error) {
       console.error("🔥 Firebase initialization failed:", error);
-      throw new Error("Firebase initialization failed. Please check your Firebase configuration.");
+      return false;
     }
   } else {
-    console.error("🔥 Firebase not configured - authentication unavailable");
-    throw new Error("Firebase not configured. Please set Firebase environment variables.");
+    console.log("🔥 Firebase not configured - running without authentication");
+    return false;
   }
-  return false;
 }
 
 // Initialize Firebase (will be called when needed)
@@ -141,17 +147,15 @@ export const firebaseAuthService = {
 export const authService = {
   isFirebaseEnabled: false,
   
-  // Initialize Firebase - required for authentication
+  // Initialize Firebase - graceful fallback if not configured
   async ensureFirebaseInitialized() {
     if (!firebaseInitPromise) {
       firebaseInitPromise = initializeFirebase();
     }
-    await firebaseInitPromise;
-    this.isFirebaseEnabled = isFirebaseConfigured && firebaseAuth.isAvailable();
+    const initSuccess = await firebaseInitPromise;
+    this.isFirebaseEnabled = initSuccess && isFirebaseConfigured && firebaseAuth.isAvailable();
     
-    if (!this.isFirebaseEnabled) {
-      throw new Error("Firebase authentication is required but not configured properly");
-    }
+    return this.isFirebaseEnabled;
   },
 
   // Firebase Google sign-in - only method available
