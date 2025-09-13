@@ -22,7 +22,83 @@ import {
   type SubmissionFile,
   type InsertSubmissionFile,
 } from "@shared/schema";
-import { IStorage } from "./storage";
+
+export interface IStorage {
+  // User operations (mandatory for Replit Auth)
+  getUser(id: string): Promise<User | undefined>;
+  upsertUser(user: UpsertUser): Promise<User>;
+  updateUserStripeInfo(userId: string, stripeCustomerId: string, stripeSubscriptionId?: string): Promise<User>;
+  
+  // Event operations
+  createEvent(event: InsertEvent): Promise<Event>;
+  getEvent(id: string): Promise<Event | undefined>;
+  getEvents(filters?: { type?: string; status?: string; search?: string }): Promise<Event[]>;
+  updateEvent(id: string, updates: Partial<InsertEvent>): Promise<Event>;
+  deleteEvent(id: string): Promise<void>;
+  getUserEvents(userId: string): Promise<Event[]>;
+  getEventsByOrganizer(organizerId: string): Promise<Event[]>;
+  
+  // Registration operations
+  registerForEvent(eventId: string, userId: string, teamId?: string): Promise<EventRegistration>;
+  getEventRegistrations(eventId: string): Promise<EventRegistration[]>;
+  getUserRegistrations(userId: string): Promise<EventRegistration[]>;
+  updateRegistrationPaymentStatus(id: string, status: string, paymentIntentId?: string): Promise<EventRegistration>;
+  
+  // Team operations
+  createTeam(team: InsertTeam): Promise<Team>;
+  getTeam(id: string): Promise<Team | undefined>;
+  getEventTeams(eventId: string): Promise<Team[]>;
+  joinTeam(teamId: string, userId: string): Promise<void>;
+  joinTeamByInviteCode(inviteCode: string, userId: string): Promise<Team>;
+  leaveTeam(teamId: string, userId: string): Promise<void>;
+  getTeamMembers(teamId: string): Promise<User[]>;
+  
+  // Chat operations
+  createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  getChatMessages(eventId: string, limit?: number): Promise<ChatMessage[]>;
+  
+  // AI operations
+  generateEventRecommendations(userId: string): Promise<AIRecommendation[]>;
+  
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getUserNotifications(userId: string): Promise<Notification[]>;
+  markNotificationAsRead(notificationId: string): Promise<void>;
+  
+  // Analytics operations
+  logEventView(eventId: string, userId: string): Promise<void>;
+  getEventAnalytics(eventId: string): Promise<EventAnalytic[]>;
+  getTrendingEvents(): Promise<Event[]>;
+  
+  // RSVP operations
+  createEventRsvp(rsvp: InsertEventRsvp): Promise<EventRsvp>;
+  updateEventRsvp(id: string, updates: Partial<InsertEventRsvp>): Promise<EventRsvp>;
+  getEventRsvp(id: string): Promise<EventRsvp | undefined>;
+  getEventRsvps(eventId: string): Promise<EventRsvp[]>;
+  getRsvpByUser(eventId: string, userId: string): Promise<EventRsvp | undefined>;
+  getRsvpsNeedingReminder(eventId: string): Promise<EventRsvp[]>;
+  sendRsvpReminder(rsvpId: string): Promise<void>;
+
+  // Project submission operations
+  createProjectSubmission(submission: InsertProjectSubmission): Promise<ProjectSubmission>;
+  updateProjectSubmission(id: string, updates: Partial<InsertProjectSubmission>): Promise<ProjectSubmission>;
+  getProjectSubmission(id: string): Promise<ProjectSubmission | undefined>;
+  getEventSubmissions(eventId: string): Promise<ProjectSubmission[]>;
+  getTeamSubmission(eventId: string, teamId: string): Promise<ProjectSubmission | undefined>;
+  getUserSubmission(eventId: string, userId: string): Promise<ProjectSubmission | undefined>;
+  submitProject(submissionId: string): Promise<ProjectSubmission>;
+  reviewSubmission(submissionId: string, reviewerId: string, score: number, notes: string): Promise<ProjectSubmission>;
+
+  // File upload operations
+  createSubmissionFile(file: InsertSubmissionFile): Promise<SubmissionFile>;
+  getSubmissionFiles(submissionId: string): Promise<SubmissionFile[]>;
+  deleteSubmissionFile(fileId: string): Promise<void>;
+
+  // Organizer dashboard operations
+  getEventDashboardStats(eventId: string, organizerId: string): Promise<any>;
+  getEventParticipants(eventId: string, organizerId: string): Promise<any[]>;
+  sendBulkAnnouncement(eventId: string, organizerId: string, subject: string, message: string, recipientType: string): Promise<void>;
+}
 
 export class InMemoryStorage implements IStorage {
   private users = new Map<string, User>();
@@ -39,6 +115,7 @@ export class InMemoryStorage implements IStorage {
   private eventRsvps = new Map<string, EventRsvp>();
   private projectSubmissions = new Map<string, ProjectSubmission>();
   private submissionFiles = new Map<string, SubmissionFile[]>(); // submissionId -> files[]
+  private teamInviteCodes = new Map<string, string>(); // teamId -> inviteCode
   
   private initialized = false;
 
@@ -139,7 +216,14 @@ export class InMemoryStorage implements IStorage {
         prizePool: '20000.00',
         requirements: ['Programming experience', 'Laptop required', 'Team of 2-4 members'],
         tags: ['AI', 'Machine Learning', 'Innovation', 'Competition'],
-        imageUrl: 'https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=800'
+        imageUrl: 'https://images.unsplash.com/photo-1555949963-aa79dcee981c?w=800',
+        rsvpDeadline: new Date('2025-01-14T23:59:59Z'),
+        projectSubmissionDeadline: new Date('2025-01-17T18:00:00Z'),
+        allowWithdrawal: true,
+        requireProjectSubmission: true,
+        projectSubmissionInstructions: 'Submit your AI innovation project with source code, demo video, and presentation.',
+        maxFileSize: 50,
+        allowedFileTypes: ['pdf', 'zip', 'mp4', 'pptx', 'docx']
       },
       {
         id: 'event-web3-workshop',
@@ -157,7 +241,14 @@ export class InMemoryStorage implements IStorage {
         prizePool: '0.00',
         requirements: ['Basic programming knowledge', 'Laptop with development tools'],
         tags: ['Blockchain', 'Web3', 'Smart Contracts', 'Education'],
-        imageUrl: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800'
+        imageUrl: 'https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=800',
+        rsvpDeadline: new Date('2025-01-19T23:59:59Z'),
+        projectSubmissionDeadline: null,
+        allowWithdrawal: true,
+        requireProjectSubmission: false,
+        projectSubmissionInstructions: null,
+        maxFileSize: 10,
+        allowedFileTypes: ['pdf', 'doc', 'docx']
       },
       {
         id: 'event-startup-pitch-competition',
@@ -175,7 +266,14 @@ export class InMemoryStorage implements IStorage {
         prizePool: '25000.00',
         requirements: ['Functioning prototype or MVP', 'Pitch deck required', 'Early-stage Indian startup'],
         tags: ['Startups', 'Venture Capital', 'Pitch', 'Funding', 'India'],
-        imageUrl: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800'
+        imageUrl: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800',
+        rsvpDeadline: new Date('2025-01-31T23:59:59Z'),
+        projectSubmissionDeadline: null,
+        allowWithdrawal: true,
+        requireProjectSubmission: false,
+        projectSubmissionInstructions: null,
+        maxFileSize: 10,
+        allowedFileTypes: ['pdf', 'pptx', 'docx']
       },
       {
         id: 'event-mobile-dev-bootcamp',
@@ -193,7 +291,14 @@ export class InMemoryStorage implements IStorage {
         prizePool: '0.00',
         requirements: ['Basic programming knowledge', 'Laptop with development tools', 'Android device recommended'],
         tags: ['Mobile Development', 'iOS', 'Android', 'React Native', 'Flutter'],
-        imageUrl: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800'
+        imageUrl: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=800',
+        rsvpDeadline: new Date('2025-02-09T23:59:59Z'),
+        projectSubmissionDeadline: new Date('2025-02-12T17:00:00Z'),
+        allowWithdrawal: true,
+        requireProjectSubmission: true,
+        projectSubmissionInstructions: 'Submit your mobile app project with APK/IPA file, source code, and app store listing materials.',
+        maxFileSize: 100,
+        allowedFileTypes: ['zip', 'apk', 'ipa', 'pdf', 'mp4']
       },
       {
         id: 'event-data-science-challenge',
@@ -211,7 +316,14 @@ export class InMemoryStorage implements IStorage {
         prizePool: '15000.00',
         requirements: ['Data science/ML experience', 'Python or R knowledge', 'Passion for solving Indian problems'],
         tags: ['Data Science', 'Smart India', 'Machine Learning', 'Social Impact'],
-        imageUrl: 'https://images.unsplash.com/photo-1551808525-51a94da548ce?w=800'
+        imageUrl: 'https://images.unsplash.com/photo-1551808525-51a94da548ce?w=800',
+        rsvpDeadline: new Date('2025-02-14T23:59:59Z'),
+        projectSubmissionDeadline: new Date('2025-02-16T20:00:00Z'),
+        allowWithdrawal: true,
+        requireProjectSubmission: true,
+        projectSubmissionInstructions: 'Submit your data science solution with Jupyter notebooks, datasets, model files, and analysis report.',
+        maxFileSize: 500,
+        allowedFileTypes: ['zip', 'ipynb', 'csv', 'pkl', 'pdf', 'py']
       },
       {
         id: 'event-devops-summit',
@@ -229,7 +341,14 @@ export class InMemoryStorage implements IStorage {
         prizePool: '0.00',
         requirements: ['DevOps or cloud experience', 'Professional role in tech', '2+ years experience'],
         tags: ['DevOps', 'Cloud Computing', 'Kubernetes', 'AWS', 'Azure', 'India IT'],
-        imageUrl: 'https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=800'
+        imageUrl: 'https://images.unsplash.com/photo-1517180102446-f3ece451e9d8?w=800',
+        rsvpDeadline: new Date('2025-02-28T23:59:59Z'),
+        projectSubmissionDeadline: null,
+        allowWithdrawal: true,
+        requireProjectSubmission: false,
+        projectSubmissionInstructions: null,
+        maxFileSize: 10,
+        allowedFileTypes: ['pdf', 'pptx', 'docx']
       },
       {
         id: 'event-ux-design-thinking',
@@ -247,7 +366,14 @@ export class InMemoryStorage implements IStorage {
         prizePool: '0.00',
         requirements: ['Design interest', 'Laptop recommended', 'Creativity mindset', 'Basic Hindi/English knowledge'],
         tags: ['UX Design', 'Design Thinking', 'User Research', 'India UX'],
-        imageUrl: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=800'
+        imageUrl: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?w=800',
+        rsvpDeadline: new Date('2025-03-09T23:59:59Z'),
+        projectSubmissionDeadline: null,
+        allowWithdrawal: true,
+        requireProjectSubmission: false,
+        projectSubmissionInstructions: null,
+        maxFileSize: 10,
+        allowedFileTypes: ['pdf', 'fig', 'sketch']
       },
       {
         id: 'event-cybersec-quiz',
@@ -265,7 +391,14 @@ export class InMemoryStorage implements IStorage {
         prizePool: '12000.00',
         requirements: ['Basic cybersecurity knowledge', 'Internet connection', 'India residence preferred'],
         tags: ['Cybersecurity', 'Quiz', 'Network Security', 'Ethical Hacking', 'India'],
-        imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800'
+        imageUrl: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=800',
+        rsvpDeadline: new Date('2025-03-14T23:59:59Z'),
+        projectSubmissionDeadline: null,
+        allowWithdrawal: true,
+        requireProjectSubmission: false,
+        projectSubmissionInstructions: null,
+        maxFileSize: 10,
+        allowedFileTypes: ['pdf', 'docx']
       }
     ];
 
@@ -551,6 +684,13 @@ export class InMemoryStorage implements IStorage {
       requirements: event.requirements || null,
       tags: event.tags || null,
       imageUrl: event.imageUrl || null,
+      rsvpDeadline: event.rsvpDeadline || null,
+      projectSubmissionDeadline: event.projectSubmissionDeadline || null,
+      allowWithdrawal: event.allowWithdrawal ?? true,
+      requireProjectSubmission: event.requireProjectSubmission ?? false,
+      projectSubmissionInstructions: event.projectSubmissionInstructions || null,
+      maxFileSize: event.maxFileSize || 10,
+      allowedFileTypes: event.allowedFileTypes || ['pdf', 'doc', 'docx', 'zip', 'png', 'jpg'],
       createdAt: now,
       updatedAt: now,
     };
@@ -635,6 +775,14 @@ export class InMemoryStorage implements IStorage {
       paymentStatus: 'pending',
       paymentIntentId: null,
       registeredAt: new Date(),
+      status: 'pending',
+      rsvpStatus: 'pending',
+      rsvpedAt: null,
+      checkedInAt: null,
+      withdrawnAt: null,
+      withdrawalReason: null,
+      organizerNotes: null,
+      updatedAt: new Date(),
     };
     
     this.eventRegistrations.set(registration.id, registration);
@@ -676,6 +824,7 @@ export class InMemoryStorage implements IStorage {
   // Team operations (enhanced with invite codes)
   async createTeam(team: InsertTeam): Promise<Team> {
     const now = new Date();
+    const inviteCode = this.generateInviteCode();
     const newTeam: Team = {
       id: this.generateId(),
       name: team.name,
@@ -685,19 +834,19 @@ export class InMemoryStorage implements IStorage {
       maxMembers: team.maxMembers || 4,
       skills: team.skills || null,
       isOpen: team.isOpen ?? true,
-      inviteCode: this.generateInviteCode(),
       createdAt: now,
       updatedAt: now,
     };
     
     this.teams.set(newTeam.id, newTeam);
+    this.teamInviteCodes.set(newTeam.id, inviteCode);
     
     // Add leader as team member
     if (team.leaderId) {
       this.teamMembers.set(newTeam.id, [team.leaderId]);
     }
     
-    console.log(`💾 IN-MEMORY: Created team ${newTeam.id} with invite code ${newTeam.inviteCode}`);
+    console.log(`💾 IN-MEMORY: Created team ${newTeam.id} with invite code ${inviteCode}`);
     return newTeam;
   }
 
@@ -765,24 +914,6 @@ export class InMemoryStorage implements IStorage {
     return team;
   }
 
-  async getTrendingEvents(): Promise<Event[]> {
-    await this.initializeData();
-    
-    // Mock trending logic - in real app would be based on metrics
-    const events = Array.from(this.events.values())
-      .filter(event => ['published', 'registration_open', 'live'].includes(event.status))
-      .sort((a, b) => {
-        // Sort by recent creation and high prize pools
-        const aScore = (a.prizePool ? parseFloat(a.prizePool) : 0) + 
-                      (new Date(a.createdAt || 0).getTime() / 1000000);
-        const bScore = (b.prizePool ? parseFloat(b.prizePool) : 0) + 
-                      (new Date(b.createdAt || 0).getTime() / 1000000);
-        return bScore - aScore;
-      })
-      .slice(0, 10);
-    
-    return events;
-  }
 
   // Chat operations (simplified)
   async createChatMessage(message: InsertChatMessage): Promise<ChatMessage> {
@@ -916,18 +1047,52 @@ export class InMemoryStorage implements IStorage {
     this.eventAnalytics.set(eventId, eventAnalytics);
   }
 
-  async getEventAnalytics(eventId: string, metric?: string): Promise<EventAnalytic[]> {
+  async getEventAnalytics(eventId: string): Promise<EventAnalytic[]> {
     let analytics = this.eventAnalytics.get(eventId) || [];
-    
-    if (metric) {
-      analytics = analytics.filter(a => a.metric === metric);
-    }
     
     return analytics.sort((a, b) => {
       const aDate = a.date ? new Date(a.date).getTime() : 0;
       const bDate = b.date ? new Date(b.date).getTime() : 0;
       return bDate - aDate;
     });
+  }
+
+  async logEventView(eventId: string, userId: string): Promise<void> {
+    await this.recordEventMetric(eventId, 'views', 1);
+  }
+
+  async getTrendingEvents(): Promise<Event[]> {
+    const events = Array.from(this.events.values())
+      .filter(event => event.status === 'published')
+      .sort((a, b) => {
+        const aViews = this.eventAnalytics.get(a.id)?.find(metric => metric.metric === 'views')?.value || '0';
+        const bViews = this.eventAnalytics.get(b.id)?.find(metric => metric.metric === 'views')?.value || '0';
+        return parseInt(bViews) - parseInt(aViews);
+      })
+      .slice(0, 10);
+    
+    return events;
+  }
+
+  async getChatMessages(eventId: string, limit?: number): Promise<ChatMessage[]> {
+    const messages = this.chatMessages.get(eventId) || [];
+    return limit ? messages.slice(-limit) : messages;
+  }
+
+  async generateEventRecommendations(userId: string): Promise<AIRecommendation[]> {
+    const recommendations = this.aiRecommendations.get(userId) || [];
+    return recommendations.filter(r => r.type === 'event');
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<void> {
+    for (const [userId, notifications] of this.notifications.entries()) {
+      const notification = notifications.find(n => n.id === notificationId);
+      if (notification) {
+        notification.read = true;
+        this.notifications.set(userId, notifications);
+        break;
+      }
+    }
   }
 
   // Search and discovery (simplified)
@@ -1317,24 +1482,5 @@ export class InMemoryStorage implements IStorage {
     }
 
     console.log(`📢 Bulk announcement sent to ${registrations.length} participants for event ${eventId}`);
-  }
-
-  async getTrendingEvents(): Promise<Event[]> {
-    const now = new Date();
-    const events = Array.from(this.events.values())
-      .filter(event => 
-        event.status === 'published' && 
-        new Date(event.startDate) > now
-      )
-      .map(event => {
-        const registrationCount = Array.from(this.eventRegistrations.values())
-          .filter(reg => reg.eventId === event.id).length;
-        return { event, registrationCount };
-      })
-      .sort((a, b) => b.registrationCount - a.registrationCount)
-      .slice(0, 10)
-      .map(item => item.event);
-
-    return events;
   }
 }

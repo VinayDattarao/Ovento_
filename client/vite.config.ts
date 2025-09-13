@@ -1,6 +1,9 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "path";
+import { fileURLToPath } from 'node:url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   plugins: [react()],
@@ -17,7 +20,7 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     rollupOptions: {
-      onwarn: (warning, warn) => {
+      onwarn: (warning: any, warn: any) => {
         // Suppress unused import warnings
         if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
         warn(warning);
