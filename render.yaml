@@ -1,0 +1,34 @@
+services:
+  # Web Service (your main app)
+  - type: web
+    name: eventhorizon-web
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+    # Auto-deploy from main branch
+    autoDeploy: true
+
+  # PostgreSQL Database
+  - type: pserv
+    name: eventhorizon-db
+    env: postgresql
+    region: oregon
+    plan: free
+    # Database will auto-generate DATABASE_URL
+    
+# Environment Groups (for secrets)
+envVarGroups:
+  - name: app-secrets
+    envVars:
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: eventhorizon-db
+          property: connectionString

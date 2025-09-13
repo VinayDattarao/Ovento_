@@ -1,0 +1,13 @@
+# Files to ignore during Render deployment
+node_modules/
+.git/
+.replit
+.env
+.env.local
+dist/
+attached_assets/
+*.log
+.DS_Store
+.vscode/
+__pycache__/
+*.pyc
